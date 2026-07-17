@@ -355,6 +355,31 @@ progress::-webkit-progress-value {
 .calendarDetail h2 {
   margin: 6px 0 12px;
 }
+.weekTask,
+.calendarTask {
+  border-top: 1px solid #e5e9e6;
+  padding: 8px 0;
+}
+.moveTask > button {
+  min-height: 40px;
+  padding: 7px 11px;
+  font-size: 12px;
+}
+.movePicker {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  background: #edf5f1;
+}
+.movePicker input {
+  width: 100%;
+  border: 1px solid #bfcac5;
+  border-radius: 10px;
+  padding: 0 10px;
+  background: #fff;
+}
 .legend {
   display: flex;
   gap: 10px;
