@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#126b5b" />
+    <title>なつまなびを更新</title>
+    <style>
+      body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f4f1e8;color:#243631;font-family:sans-serif}.box{width:min(88%,420px);padding:28px;border-radius:22px;background:#fff;text-align:center;box-shadow:0 12px 35px #173c3422}.spin{width:46px;height:46px;margin:18px auto;border:6px solid #dce9e4;border-top-color:#126b5b;border-radius:50%;animation:s 1s linear infinite}@keyframes s{to{transform:rotate(360deg)}}small{color:#6d7874}
+    </style>
+  </head>
+  <body>
+    <div class="box">
+      <h1>最新版に更新中</h1>
+      <div class="spin"></div>
+      <p>学習記録は消えません。</p>
+      <small>終わると週間予定を開きます</small>
+    </div>
+    <script>
+      (async()=>{try{if('serviceWorker'in navigator){const r=await navigator.serviceWorker.getRegistrations();await Promise.all(r.map(x=>x.unregister()))}if('caches'in window){const k=await caches.keys();await Promise.all(k.map(x=>caches.delete(x)))}}finally{location.replace('./?fresh='+Date.now()+'#/week')}})();
+    </script>
+  </body>
+</html>
