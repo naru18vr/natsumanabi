@@ -218,10 +218,13 @@ function Week({ d, upd }: { d: Data; upd: (d: Data) => void }) {
       {ds.map((x) => {
         const ts = d.tasks.filter((t) => t.date === x);
         const es = d.events.filter((e) => e.date === x);
+        const weekday = new Intl.DateTimeFormat("ja-JP", {
+          weekday: "short",
+        }).format(new Date(x + "T00:00:00"));
         return (
           <Card key={x}>
             <h3>
-              {x}{" "}
+              {x}（{weekday}）{" "}
               <span className="muted">
                 {ts.reduce((a, t) => a + t.estimatedMinutes, 0)}分
               </span>
@@ -244,11 +247,19 @@ function Week({ d, upd }: { d: Data; upd: (d: Data) => void }) {
   );
 }
 function Calendar({ d }: { d: Data }) {
+  const [selected, setSelected] = useState("2026-07-21");
   const dates = Array.from({ length: 67 }, (_, i) => {
     const x = new Date("2026-07-21T00:00:00");
     x.setDate(x.getDate() + i);
     return x.toLocaleDateString("sv-SE");
   });
+  const selectedTasks = d.tasks.filter((task) => task.date === selected);
+  const selectedEvents = d.events.filter((event) => event.date === selected);
+  const selectedLabel = new Intl.DateTimeFormat("ja-JP", {
+    month: "long",
+    day: "numeric",
+    weekday: "long",
+  }).format(new Date(selected + "T00:00:00"));
   return (
     <>
       <Title t="カレンダー" sub="期限と学習期間を確認" />
@@ -262,32 +273,61 @@ function Calendar({ d }: { d: Data }) {
           const classEvent = d.events.find(
             (event) => event.type === "class" && event.date === x,
           );
-          return <div
-            className={
-              "day " + (d.settings.accommodationDates.includes(x) ? "stay" : "")
-            }
-            key={x}
-          >
-            <b>{Number(x.slice(-2))}</b>
-            <small>{x.slice(5, 7)}月</small>
-            <i>
-              {x === "2026-07-31"
-                ? "🏁宿題"
-                : x === "2026-08-31"
-                  ? "🏫終了"
-                  : d.settings.periodicTestDates.includes(x)
-                    ? "📝テスト"
-                    : x === "2026-09-25"
-                      ? "E 英検"
-                  : classEvent
-                    ? "🏫17:30"
-                    : d.settings.accommodationDates.includes(x)
-                        ? "🧳宿泊"
-                        : ""}
-            </i>
-          </div>;
+          return (
+            <button
+              type="button"
+              aria-label={`${x}の予定を表示`}
+              aria-pressed={selected === x}
+              className={`day ${d.settings.accommodationDates.includes(x) ? "stay" : ""} ${selected === x ? "selected" : ""}`}
+              key={x}
+              onClick={() => setSelected(x)}
+            >
+              <b>{Number(x.slice(-2))}</b>
+              <small>{x.slice(5, 7)}月</small>
+              <i>
+                {x === "2026-07-31"
+                  ? "🏁宿題"
+                  : x === "2026-08-31"
+                    ? "🏫終了"
+                    : d.settings.periodicTestDates.includes(x)
+                      ? "📝テスト"
+                      : x === "2026-09-25"
+                        ? "E 英検"
+                        : classEvent
+                          ? "🏫17:30"
+                          : d.settings.accommodationDates.includes(x)
+                            ? "🧳宿泊"
+                            : ""}
+              </i>
+            </button>
+          );
         })}
       </div>
+      <Card className="calendarDetail">
+        <span className="eyebrow">選択した日の予定</span>
+        <h2>{selectedLabel}</h2>
+        {selectedEvents.map((event) => (
+          <p key={event.id}>
+            {event.type === "class" ? "🏫" : "📝"}{" "}
+            {event.startTime && `${event.startTime}〜${event.endTime}　`}
+            <b>{event.title}</b>
+          </p>
+        ))}
+        {selectedTasks.map((task) => (
+          <p key={task.id}>
+            {task.status === "completed" ? "✅" : "□"} {task.subject}　
+            <b>{task.title}</b>（{task.estimatedMinutes}分）
+          </p>
+        ))}
+        {selected === "2026-07-31" && <p>🏁 夏休み宿題の家庭内完了期限</p>}
+        {selected === "2026-08-31" && <p>🏫 夏休み終了日</p>}
+        {!selectedTasks.length &&
+          !selectedEvents.length &&
+          selected !== "2026-07-31" &&
+          selected !== "2026-08-31" && (
+            <p className="muted">この日の予定はありません。</p>
+          )}
+      </Card>
     </>
   );
 }
