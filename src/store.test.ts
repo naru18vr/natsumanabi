@@ -1,0 +1,1 @@
+import{describe,it,expect}from'vitest';import{phase,pct}from'./store';describe('日程ルール',()=>{it('期間を切り替える',()=>{expect(phase('2026-07-21')).toBe('夏休み宿題集中');expect(phase('2026-08-16')).toBe('定期テスト対策');expect(phase('2026-09-18')).toBe('英検直前')});it('進捗率',()=>expect(pct(3,4)).toBe(75))});
