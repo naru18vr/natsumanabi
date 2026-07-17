@@ -371,6 +371,25 @@ progress::-webkit-progress-value {
   padding: 0 10px;
   background: #fff;
 }
+.addTaskCard {
+  border: 2px dashed #9db9b0;
+  background: #f8fbf9;
+}
+.addTaskButton {
+  width: 100%;
+  color: #126b5b;
+  border-color: #9db9b0;
+}
+.addTaskForm {
+  margin-top: 12px;
+}
+.addTaskForm .field {
+  margin: 12px 0;
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 .legend {
   display: flex;
   gap: 10px;
