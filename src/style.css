@@ -447,6 +447,36 @@ progress::-webkit-progress-value {
 .addGuide span {
   font-size: 12px;
 }
+.stepProgress {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr) auto;
+  align-items: center;
+  gap: 5px;
+  margin: 14px 2px;
+}
+.stepProgress i {
+  height: 7px;
+  border-radius: 10px;
+  background: #dfe5e2;
+}
+.stepProgress i.active {
+  background: #f1ac48;
+}
+.stepProgress span {
+  margin-left: 5px;
+  color: #697570;
+  font-size: 11px;
+  font-weight: 700;
+}
+.stepPanel {
+  min-height: 250px;
+  padding: 4px 2px;
+}
+.stepPanel > h3 {
+  margin: 8px 0 18px;
+  text-align: center;
+  font-size: 19px;
+}
 .addTaskForm .field {
   margin: 12px 0;
 }
@@ -477,6 +507,21 @@ progress::-webkit-progress-value {
   width: 20px;
   height: 20px;
   accent-color: #126b5b;
+}
+.subjectChoices {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.subjectChoices button {
+  min-height: 54px;
+  padding: 8px 4px;
+  font-size: 13px;
+}
+.subjectChoices button.selected {
+  color: #fff;
+  border-color: #126b5b;
+  background: #126b5b;
 }
 .contentChecks label:has(input:checked) {
   color: #fff;
@@ -539,6 +584,19 @@ progress::-webkit-progress-value {
 .taskPreview span {
   color: #68736f;
   font-size: 11px;
+}
+.wizardActions {
+  position: sticky;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 8px;
+  margin: 12px -4px -4px;
+  padding: 10px 4px 4px;
+  background: linear-gradient(transparent, #f8fbf9 20%);
+}
+.wizardActions button {
+  min-height: 52px;
 }
 button:disabled {
   opacity: 0.45;
