@@ -348,6 +348,13 @@ progress::-webkit-progress-value {
   border-top: 1px solid #e5e9e6;
   padding: 8px 0;
 }
+.weekTask + .addTaskCard,
+.weekTask ~ .addTaskCard {
+  margin-top: 12px;
+}
+.card > .addTaskCard {
+  box-shadow: none;
+}
 .moveTask > button {
   min-height: 40px;
   padding: 7px 11px;
