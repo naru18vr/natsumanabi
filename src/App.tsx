@@ -19,6 +19,25 @@ import {
 const eigo = "https://naru18vr.github.io/eigo/";
 const today = () =>
   new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
+const dateLabel = (date: string) =>
+  new Intl.DateTimeFormat("ja-JP", {
+    month: "long",
+    day: "numeric",
+    weekday: "short",
+  }).format(new Date(`${date}T00:00:00`));
+const subjectIcon = (subject: string) =>
+  ({
+    国語: "📕",
+    数学: "📘",
+    英語: "📙",
+    理科: "🧪",
+    社会: "🌏",
+    音楽: "🎵",
+    美術: "🎨",
+    保健体育: "🏃",
+    家庭科: "🍳",
+    英検: "🔤",
+  })[subject] || "📝";
 export default function App() {
   const [d, setD] = useState<Data>(load);
   const [simpleMode, setSimpleMode] = useState(
@@ -64,7 +83,7 @@ export default function App() {
           >
             文字{largeText ? "大" : "標準"}
           </button>
-          <span className="badge">v1.4</span>
+          <span className="badge">v1.5</span>
         </div>
       </header>
       <main>
@@ -76,6 +95,7 @@ export default function App() {
           <Route path="/eiken" element={<Eiken d={d} upd={upd} />} />
           <Route path="/report" element={<Report d={d} />} />
           <Route path="/settings" element={<Settings d={d} upd={upd} />} />
+          <Route path="/more" element={<More />} />
         </Routes>
       </main>
       <nav>
@@ -84,9 +104,7 @@ export default function App() {
           ["/week", "週間", "▦"],
           ["/calendar", "予定", "□"],
           ["/homework", "宿題", "▤"],
-          ["/eiken", "英検", "E"],
-          ["/report", "報告", "↗"],
-          ["/settings", "設定", "⚙"],
+          ["/more", "その他", "•••"],
         ].map((x) => (
           <NavLink key={x[0]} to={x[0]} end={x[0] === "/"}>
             <b>{x[2]}</b>
@@ -143,7 +161,7 @@ function MoveTask({
   return (
     <div className="moveTask">
       <button type="button" onClick={() => setOpen(!open)}>
-        📅 日付を移動
+        📅 別の日へ
       </button>
       {open && (
         <div className="movePicker">
@@ -440,6 +458,15 @@ function AddTask({
               <i key={value} className={value <= step ? "active" : ""} />
             ))}
             <span>{step} / 4</span>
+          </div>
+          <div className="selectionTrail">
+            {step > 1 && <span>✓ {subject}</span>}
+            {step > 2 && <span>✓ {taskName}</span>}
+            {step > 3 && (
+              <span>
+                ✓ {contents.length ? contents.join("・") : "内容指定なし"}
+              </span>
+            )}
           </div>
           {step === 2 && (
             <div className="stepPanel">
@@ -755,7 +782,7 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
       ),
     });
     if (s === "completed") {
-      setSuccess(`できた！ ${t.title}`);
+      setSuccess(`できた！ 今日${done.length + 1}つ目 🎉`);
       setTimeout(() => setSuccess(""), 2200);
     }
   }
@@ -831,6 +858,7 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
         <div>
           <span>{phase(date)}期間</span>
           <h1>今日も、一歩ずつ。</h1>
+          <p className="displayDate">{dateLabel(date)}</p>
           <input
             aria-label="表示日"
             type="date"
@@ -846,6 +874,36 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
           <small>達成</small>
         </div>
       </div>
+      {requiredTasks.find((task) => task.status !== "completed") && (
+        <Card className="nextTaskCard">
+          <span className="eyebrow">次はこれ！</span>
+          <h2>
+            {subjectIcon(
+              requiredTasks.find((task) => task.status !== "completed")!
+                .subject,
+            )}{" "}
+            {requiredTasks.find((task) => task.status !== "completed")!.subject}
+          </h2>
+          <h3>
+            {requiredTasks.find((task) => task.status !== "completed")!.title}
+          </h3>
+          <p>
+            目安{" "}
+            {
+              requiredTasks.find((task) => task.status !== "completed")!
+                .estimatedMinutes
+            }
+            分
+          </p>
+          <button
+            className="primary wide"
+            type="button"
+            onClick={() => setFocusMode(true)}
+          >
+            ▶ はじめる
+          </button>
+        </Card>
+      )}
       <div className="stats">
         <div>
           <b>{mins}</b>
@@ -1060,7 +1118,9 @@ function TaskRow({
           {t.status === "completed" ? "✓" : ""}
         </button>
         <div>
-          <span className={"subject " + t.subject}>{t.subject}</span>
+          <span className={"subject " + t.subject}>
+            {subjectIcon(t.subject)} {t.subject}
+          </span>
           <h3>{t.title}</h3>
           <p>
             予定 {t.estimatedMinutes}分
@@ -1074,13 +1134,19 @@ function TaskRow({
       </div>
       <div className="actions">
         <button
+          className="completeAction"
+          onClick={() => status(t, "completed")}
+        >
+          ✅ できた
+        </button>
+        <button
           onClick={() =>
             t.totalAmount ? setPartialOpen(!partialOpen) : status(t, "partial")
           }
         >
-          少しできた
+          ◐ 少しできた
         </button>
-        <button onClick={() => status(t, "rescheduled")}>明日に調整</button>
+        <MoveTask task={t} d={d} upd={upd} />
       </div>
       {partialOpen && t.totalAmount && (
         <div className="partialPanel">
@@ -1104,7 +1170,7 @@ function TaskRow({
         </div>
       )}
       <details className="moreActions">
-        <summary>編集・日付変更・削除</summary>
+        <summary>… その他</summary>
         <div className="taskTools">
           <div className="orderButtons">
             <button type="button" onClick={onUp}>
@@ -1115,7 +1181,6 @@ function TaskRow({
             </button>
           </div>
           <EditTask task={t} d={d} upd={upd} />
-          <MoveTask task={t} d={d} upd={upd} />
           <DeleteTask task={t} d={d} upd={upd} />
         </div>
         <div className="timerPanel">
@@ -1155,9 +1220,6 @@ function Week({ d, upd }: { d: Data; upd: (d: Data) => void }) {
       {ds.map((x) => {
         const ts = d.tasks.filter((t) => t.date === x);
         const es = d.events.filter((e) => e.date === x);
-        const weekday = new Intl.DateTimeFormat("ja-JP", {
-          weekday: "short",
-        }).format(new Date(x + "T00:00:00"));
         return (
           <Card key={x}>
             <button
@@ -1166,9 +1228,7 @@ function Week({ d, upd }: { d: Data; upd: (d: Data) => void }) {
               onClick={() => setOpenDay(openDay === x ? "" : x)}
             >
               <span>
-                <b>
-                  {x}（{weekday}）
-                </b>
+                <b>{dateLabel(x)}</b>
                 <small>
                   {ts.length}個・
                   {ts.reduce((a, t) => a + t.estimatedMinutes, 0)}分
@@ -1186,8 +1246,8 @@ function Week({ d, upd }: { d: Data; upd: (d: Data) => void }) {
                 {ts.map((t) => (
                   <div className="weekTask" key={t.id}>
                     <p>
-                      {t.status === "completed" ? "✅" : "□"} {t.subject}　
-                      {t.title}
+                      {t.status === "completed" ? "✅" : "□"}{" "}
+                      {subjectIcon(t.subject)} {t.subject}　{t.title}
                     </p>
                     <div className="taskTools">
                       <EditTask task={t} d={d} upd={upd} />
@@ -1592,6 +1652,27 @@ function Settings({ d, upd }: { d: Data; upd: (d: Data) => void }) {
     </>
   );
 }
+function More() {
+  return (
+    <>
+      <Title t="その他" sub="使いたいメニューを選んでね" />
+      <div className="moreMenu">
+        <NavLink to="/eiken">
+          <b>🔤 英検4級</b>
+          <span>英検の計画と進み具合</span>
+        </NavLink>
+        <NavLink to="/report">
+          <b>📤 学習報告</b>
+          <span>家の人へ送る文章を作る</span>
+        </NavLink>
+        <NavLink to="/settings">
+          <b>⚙️ 設定</b>
+          <span>時間・バックアップ・元に戻す</span>
+        </NavLink>
+      </div>
+    </>
+  );
+}
 function Setup({ d, upd }: { d: Data; upd: (d: Data) => void }) {
   const [s, setS] = useState(d.settings);
   return (
@@ -1643,8 +1724,22 @@ function Label({ t, children }: { t: string; children: any }) {
   );
 }
 function Title({ t, sub }: { t: string; sub: string }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const childPage = ["/eiken", "/report", "/settings"].includes(
+    location.pathname,
+  );
   return (
     <div className="title">
+      {childPage && (
+        <button
+          className="backButton"
+          type="button"
+          onClick={() => navigate("/more")}
+        >
+          ← もどる
+        </button>
+      )}
       <span className="eyebrow">MY STUDY PLAN</span>
       <h1>{t}</h1>
       <p>{sub}</p>
