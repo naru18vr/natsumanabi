@@ -383,6 +383,18 @@ progress::-webkit-progress-value {
 .addTaskForm {
   margin-top: 12px;
 }
+.addGuide {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  border-radius: 12px;
+  color: #fff;
+  background: #126b5b;
+}
+.addGuide span {
+  font-size: 12px;
+}
 .addTaskForm .field {
   margin: 12px 0;
 }
@@ -413,6 +425,68 @@ progress::-webkit-progress-value {
   width: 20px;
   height: 20px;
   accent-color: #126b5b;
+}
+.contentChecks label:has(input:checked) {
+  color: #fff;
+  border-color: #126b5b;
+  background: #126b5b;
+}
+.choiceSection {
+  margin: 18px 0;
+}
+.choiceSection > b {
+  display: block;
+  margin-bottom: 9px;
+  font-size: 12px;
+}
+.quickChoices,
+.priorityChoices {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+}
+.priorityChoices {
+  grid-template-columns: 1fr 1fr;
+}
+.quickChoices button,
+.priorityChoices button {
+  min-height: 48px;
+  padding: 8px;
+  font-size: 12px;
+}
+.quickChoices button.selected,
+.priorityChoices button.selected {
+  color: #fff;
+  border-color: #126b5b;
+  background: #126b5b;
+}
+.customMinutes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 12px;
+}
+.customMinutes input {
+  width: 90px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid #cdd5d1;
+  border-radius: 10px;
+}
+.taskPreview {
+  display: grid;
+  gap: 5px;
+  margin: 18px 0 10px;
+  padding: 14px;
+  border: 2px solid #f1ac48;
+  border-radius: 14px;
+  background: #fff9e9;
+}
+.taskPreview small,
+.taskPreview span {
+  color: #68736f;
+  font-size: 11px;
 }
 button:disabled {
   opacity: 0.45;
