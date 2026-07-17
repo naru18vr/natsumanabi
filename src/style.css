@@ -319,6 +319,15 @@ progress::-webkit-progress-value {
   border-radius: 8px;
   border-top: 3px solid #efad50;
   overflow: hidden;
+  text-align: left;
+  display: block;
+  color: inherit;
+  cursor: pointer;
+}
+.day.selected {
+  outline: 3px solid #126b5b;
+  outline-offset: 1px;
+  background: #eef8f4;
 }
 .day b,
 .day small {
@@ -338,6 +347,13 @@ progress::-webkit-progress-value {
 .day.stay {
   background: #e7f0f8;
   border-top-color: #4b86b4;
+}
+.calendarDetail {
+  margin-top: 16px;
+  border-top: 6px solid #126b5b;
+}
+.calendarDetail h2 {
+  margin: 6px 0 12px;
 }
 .legend {
   display: flex;
