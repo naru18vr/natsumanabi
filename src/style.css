@@ -38,6 +38,16 @@ button:active,
 .button:active {
   transform: scale(0.98);
 }
+button:focus-visible,
+.button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+a:focus-visible {
+  outline: 3px solid #f1ac48;
+  outline-offset: 2px;
+}
 .app {
   max-width: 760px;
   margin: auto;
@@ -332,6 +342,31 @@ progress::-webkit-progress-value {
   grid-template-columns: repeat(7, 1fr);
   gap: 4px;
 }
+.calendarMonth {
+  margin-bottom: 28px;
+}
+.calendarMonth h2 {
+  margin-bottom: 8px;
+}
+.weekdayRow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 6px;
+  text-align: center;
+  color: #6d7874;
+  font-size: 11px;
+  font-weight: 700;
+}
+.weekdayRow span:first-child {
+  color: #b14a4a;
+}
+.weekdayRow span:last-child {
+  color: #315ba9;
+}
+.calendarBlank {
+  min-width: 0;
+}
 .day {
   background: #fff;
   min-height: 74px;
@@ -503,6 +538,17 @@ progress::-webkit-progress-value {
   grid-template-columns: 1fr 0.8fr 1fr;
   gap: 7px;
   margin: 8px 0 14px;
+}
+.weekNav {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+  margin: 8px 0 14px;
+}
+.weekNav button {
+  min-width: 0;
+  padding: 8px 4px;
+  font-size: 12px;
 }
 .dateNav button {
   padding: 7px;
@@ -1111,7 +1157,14 @@ pre {
 }
 @media (max-width: 430px) {
   .calendar {
-    grid-template-columns: repeat(4, 1fr);
+    gap: 3px;
+  }
+  .day {
+    min-height: 72px;
+    padding: 6px 2px;
+  }
+  .day i {
+    font-size: 8px;
   }
   .hero {
     padding: 18px;
@@ -1128,5 +1181,14 @@ pre {
   }
   .app {
     padding-bottom: 80px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+    animation: none !important;
   }
 }
