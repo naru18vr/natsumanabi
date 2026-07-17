@@ -370,6 +370,37 @@ progress::-webkit-progress-value {
   border-color: #e2b9b9;
   font-size: 12px;
 }
+.deleteConfirm {
+  display: grid;
+  gap: 5px;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #e2b9b9;
+  border-radius: 12px;
+  background: #fff3f3;
+}
+.deleteConfirm b {
+  color: #8e2727;
+  font-size: 13px;
+}
+.deleteConfirm span {
+  color: #7d5a5a;
+  font-size: 11px;
+}
+.deleteConfirm > div {
+  display: flex;
+  gap: 8px;
+  margin-top: 5px;
+}
+.deleteConfirm button {
+  flex: 1;
+  min-height: 44px;
+}
+.deleteConfirm .confirmDelete {
+  color: #fff;
+  border-color: #a42b2b;
+  background: #a42b2b;
+}
 .movePicker {
   display: grid;
   gap: 8px;
