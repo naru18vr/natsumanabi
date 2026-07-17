@@ -170,6 +170,7 @@ function AddTask({
   upd: (d: Data) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [step, setStep] = useState(1);
   const [taskName, setTaskName] = useState("ワーク");
   const [customName, setCustomName] = useState("");
   const [range, setRange] = useState("指定なし");
@@ -215,6 +216,7 @@ function AddTask({
     setCustomRange("");
     setContents([]);
     setMinutes(15);
+    setStep(1);
     setOpen(false);
   };
   const previewBase =
@@ -238,198 +240,249 @@ function AddTask({
             <b>かんたん予定追加</b>
             <span>{date} に追加</span>
           </div>
-          <Label t="① なにをする？">
-            <select
-              value={taskName}
-              onChange={(e) => setTaskName(e.target.value)}
-            >
-              <optgroup label="ワーク・教材">
-                <option>ワーク</option>
-                <option>ドラゴン桜計算プリント</option>
-                <option>めきめきEnglish 2</option>
-                <option>キホンの夏</option>
-                <option>1年生の復習評価テスト</option>
-                <option>3年間の総仕上げ問題集</option>
-                <option>学習整理 理科</option>
-                <option>英検4級学習</option>
-              </optgroup>
-              <optgroup label="学習内容">
-                <option>プリント</option>
-                <option>宿題</option>
-                <option>予習</option>
-                <option>復習</option>
-                <option>間違い直し</option>
-                <option>テスト対策</option>
-                <option>英単語</option>
-                <option>リスニング</option>
-                <option>読書</option>
-                <option>レポート</option>
-                <option>調べ学習</option>
-                <option>制作</option>
-              </optgroup>
-              <option>その他（自由入力）</option>
-            </select>
-          </Label>
-          {taskName === "その他（自由入力）" && (
-            <Label t="タスク名を入力">
-              <input
-                value={customName}
-                onChange={(e) => setCustomName(e.target.value)}
-                placeholder="タスク名"
-              />
-            </Label>
-          )}
-          <Label t="② どこまでやる？">
-            <select value={range} onChange={(e) => setRange(e.target.value)}>
-              <option>指定なし</option>
-              <option>1ページ</option>
-              <option>2ページ</option>
-              <option>3ページ</option>
-              <option>5ページ</option>
-              <option>10ページ</option>
-              <option>15ページ</option>
-              <option>20ページ</option>
-              <option>1枚</option>
-              <option>2枚</option>
-              <option>3枚</option>
-              <option>5枚</option>
-              <option>10問</option>
-              <option>20問</option>
-              <option>全部</option>
-              <option>その他の範囲</option>
-            </select>
-          </Label>
-          {range === "その他の範囲" && (
-            <Label t="範囲を入力">
-              <input
-                value={customRange}
-                onChange={(e) => setCustomRange(e.target.value)}
-                placeholder="例：p.10〜15、英単語10個"
-              />
-            </Label>
-          )}
-          <fieldset className="contentChecks">
-            <legend>③ やることをタップ（いくつでもOK）</legend>
-            {[
-              "問題を解く",
-              "丸付け",
-              "間違い直し",
-              "復習",
-              "予習",
-              "暗記",
-              "読む",
-              "聴く",
-              "調べる",
-              "下書き",
-              "清書",
-              "提出",
-            ].map((item) => (
-              <label key={item}>
-                <input
-                  type="checkbox"
-                  checked={contents.includes(item)}
-                  onChange={(e) =>
-                    setContents(
-                      e.target.checked
-                        ? [...contents, item]
-                        : contents.filter((value) => value !== item),
-                    )
-                  }
-                />
-                <span>{item}</span>
-              </label>
+          <div className="stepProgress" aria-label={`4ステップ中${step}番目`}>
+            {[1, 2, 3, 4].map((value) => (
+              <i key={value} className={value <= step ? "active" : ""} />
             ))}
-          </fieldset>
-          <Label t="④ 科目は？">
-            <select
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-            >
-              {[
-                "国語",
-                "数学",
-                "英語",
-                "理科",
-                "社会",
-                "音楽",
-                "美術",
-                "保健体育",
-                "家庭科",
-                "英検",
-                "その他",
-              ].map((item) => (
-                <option key={item}>{item}</option>
-              ))}
-            </select>
-          </Label>
-          <div className="choiceSection">
-            <b>⑤ 何分くらい？</b>
-            <div className="quickChoices">
-              {[10, 15, 30, 45, 60].map((value) => (
-                <button
-                  className={minutes === value ? "selected" : ""}
-                  type="button"
-                  key={value}
-                  onClick={() => setMinutes(value)}
+            <span>{step} / 4</span>
+          </div>
+          {step === 1 && (
+            <div className="stepPanel">
+              <h3>📚 なにを、どこまで？</h3>
+              <Label t="① なにをする？">
+                <select
+                  value={taskName}
+                  onChange={(e) => setTaskName(e.target.value)}
                 >
-                  {value}分
-                </button>
+                  <optgroup label="ワーク・教材">
+                    <option>ワーク</option>
+                    <option>ドラゴン桜計算プリント</option>
+                    <option>めきめきEnglish 2</option>
+                    <option>キホンの夏</option>
+                    <option>1年生の復習評価テスト</option>
+                    <option>3年間の総仕上げ問題集</option>
+                    <option>学習整理 理科</option>
+                    <option>英検4級学習</option>
+                  </optgroup>
+                  <optgroup label="学習内容">
+                    <option>プリント</option>
+                    <option>宿題</option>
+                    <option>予習</option>
+                    <option>復習</option>
+                    <option>間違い直し</option>
+                    <option>テスト対策</option>
+                    <option>英単語</option>
+                    <option>リスニング</option>
+                    <option>読書</option>
+                    <option>レポート</option>
+                    <option>調べ学習</option>
+                    <option>制作</option>
+                  </optgroup>
+                  <option>その他（自由入力）</option>
+                </select>
+              </Label>
+              {taskName === "その他（自由入力）" && (
+                <Label t="タスク名を入力">
+                  <input
+                    value={customName}
+                    onChange={(e) => setCustomName(e.target.value)}
+                    placeholder="タスク名"
+                  />
+                </Label>
+              )}
+              <Label t="② どこまでやる？">
+                <select
+                  value={range}
+                  onChange={(e) => setRange(e.target.value)}
+                >
+                  <option>指定なし</option>
+                  <option>1ページ</option>
+                  <option>2ページ</option>
+                  <option>3ページ</option>
+                  <option>5ページ</option>
+                  <option>10ページ</option>
+                  <option>15ページ</option>
+                  <option>20ページ</option>
+                  <option>1枚</option>
+                  <option>2枚</option>
+                  <option>3枚</option>
+                  <option>5枚</option>
+                  <option>10問</option>
+                  <option>20問</option>
+                  <option>全部</option>
+                  <option>その他の範囲</option>
+                </select>
+              </Label>
+              {range === "その他の範囲" && (
+                <Label t="範囲を入力">
+                  <input
+                    value={customRange}
+                    onChange={(e) => setCustomRange(e.target.value)}
+                    placeholder="例：p.10〜15、英単語10個"
+                  />
+                </Label>
+              )}
+            </div>
+          )}
+          {step === 2 && (
+            <fieldset className="contentChecks">
+              <legend>✅ やることをタップ（いくつでもOK）</legend>
+              {[
+                "問題を解く",
+                "丸付け",
+                "間違い直し",
+                "復習",
+                "予習",
+                "暗記",
+                "読む",
+                "聴く",
+                "調べる",
+                "下書き",
+                "清書",
+                "提出",
+              ].map((item) => (
+                <label key={item}>
+                  <input
+                    type="checkbox"
+                    checked={contents.includes(item)}
+                    onChange={(e) =>
+                      setContents(
+                        e.target.checked
+                          ? [...contents, item]
+                          : contents.filter((value) => value !== item),
+                      )
+                    }
+                  />
+                  <span>{item}</span>
+                </label>
               ))}
+            </fieldset>
+          )}
+          {step === 3 && (
+            <div className="stepPanel">
+              <h3>🎒 何の教科？</h3>
+              <div className="subjectChoices">
+                {[
+                  "国語",
+                  "数学",
+                  "英語",
+                  "理科",
+                  "社会",
+                  "音楽",
+                  "美術",
+                  "保健体育",
+                  "家庭科",
+                  "英検",
+                  "その他",
+                ].map((item) => (
+                  <button
+                    className={subject === item ? "selected" : ""}
+                    type="button"
+                    key={item}
+                    onClick={() => setSubject(item)}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
             </div>
-            <label className="customMinutes">
-              その他
-              <input
-                aria-label="予定時間（分）"
-                type="number"
-                min="1"
-                max="300"
-                value={minutes}
-                onChange={(e) => setMinutes(Number(e.target.value))}
-              />
-              分
-            </label>
-          </div>
-          <div className="choiceSection">
-            <b>⑥ どっちに入れる？</b>
-            <div className="priorityChoices">
-              <button
-                className={priority === "required" ? "selected" : ""}
-                type="button"
-                onClick={() => setPriority("required")}
-              >
-                ⭐ 今日の必須
-              </button>
-              <button
-                className={priority === "normal" ? "selected" : ""}
-                type="button"
-                onClick={() => setPriority("normal")}
-              >
-                🌱 余裕があれば
-              </button>
+          )}
+          {step === 4 && (
+            <div className="stepPanel">
+              <h3>⏱ あと少しで完成！</h3>
+              <div className="choiceSection">
+                <b>何分くらい？</b>
+                <div className="quickChoices">
+                  {[10, 15, 30, 45, 60].map((value) => (
+                    <button
+                      className={minutes === value ? "selected" : ""}
+                      type="button"
+                      key={value}
+                      onClick={() => setMinutes(value)}
+                    >
+                      {value}分
+                    </button>
+                  ))}
+                </div>
+                <label className="customMinutes">
+                  その他
+                  <input
+                    aria-label="予定時間（分）"
+                    type="number"
+                    min="1"
+                    max="300"
+                    value={minutes}
+                    onChange={(e) => setMinutes(Number(e.target.value))}
+                  />
+                  分
+                </label>
+              </div>
+              <div className="choiceSection">
+                <b>どっちに入れる？</b>
+                <div className="priorityChoices">
+                  <button
+                    className={priority === "required" ? "selected" : ""}
+                    type="button"
+                    onClick={() => setPriority("required")}
+                  >
+                    ⭐ 今日の必須
+                  </button>
+                  <button
+                    className={priority === "normal" ? "selected" : ""}
+                    type="button"
+                    onClick={() => setPriority("normal")}
+                  >
+                    🌱 余裕があれば
+                  </button>
+                </div>
+              </div>
+              <div className="taskPreview">
+                <small>この予定を追加します</small>
+                <b>
+                  {subject}　{previewTitle}
+                </b>
+                <span>
+                  {minutes}分・
+                  {priority === "required" ? "今日の必須" : "余裕があれば"}
+                </span>
+              </div>
             </div>
-          </div>
-          <div className="taskPreview">
-            <small>この予定を追加します</small>
-            <b>
-              {subject}　{previewTitle}
-            </b>
-            <span>
-              {minutes}分・
-              {priority === "required" ? "今日の必須" : "余裕があれば"}
-            </span>
-          </div>
-          <div className="actions">
-            <button
-              className="primary"
-              type="button"
-              disabled={taskName === "その他（自由入力）" && !customName.trim()}
-              onClick={add}
-            >
-              予定を追加
-            </button>
-            <button type="button" onClick={() => setOpen(false)}>
-              キャンセル
-            </button>
+          )}
+          <div className="wizardActions">
+            {step > 1 ? (
+              <button type="button" onClick={() => setStep(step - 1)}>
+                ← もどる
+              </button>
+            ) : (
+              <button type="button" onClick={() => setOpen(false)}>
+                やめる
+              </button>
+            )}
+            {step < 4 ? (
+              <button
+                className="primary"
+                type="button"
+                disabled={
+                  step === 1 &&
+                  taskName === "その他（自由入力）" &&
+                  !customName.trim()
+                }
+                onClick={() => setStep(step + 1)}
+              >
+                次へ →
+              </button>
+            ) : (
+              <button
+                className="primary"
+                type="button"
+                disabled={
+                  taskName === "その他（自由入力）" && !customName.trim()
+                }
+                onClick={add}
+              >
+                ✓ この予定を追加
+              </button>
+            )}
           </div>
         </div>
       )}
