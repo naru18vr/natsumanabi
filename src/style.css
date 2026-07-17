@@ -648,8 +648,7 @@ progress::-webkit-progress-value {
 .trashList small {
   color: #71807b;
 }
-.simpleMode .forecastNotice,
-.simpleMode .quickTemplates {
+.simpleMode .forecastNotice {
   display: none;
 }
 .movePicker {
@@ -925,6 +924,76 @@ pre {
 .modal p {
   font-size: 13px;
   color: #64716c;
+}
+.displayDate {
+  margin: 8px 0 2px;
+  color: #fff;
+  font-weight: 700;
+}
+.nextTaskCard {
+  border: 2px solid #f1ac48;
+  background: linear-gradient(135deg, #fffdf4, #fff4d8);
+}
+.nextTaskCard h2 {
+  margin: 8px 0 2px;
+}
+.nextTaskCard h3 {
+  font-size: 18px;
+}
+.actions > * {
+  flex: 1;
+}
+.actions > .moveTask > button {
+  width: 100%;
+  min-height: 42px;
+}
+.completeAction {
+  color: #fff;
+  border-color: #168a70;
+  background: #168a70;
+}
+.selectionTrail {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  margin: -4px 0 10px;
+}
+.selectionTrail span {
+  min-width: max-content;
+  padding: 5px 8px;
+  border-radius: 20px;
+  color: #126b5b;
+  background: #e5f1ed;
+  font-size: 10px;
+  font-weight: 700;
+}
+.moreMenu {
+  display: grid;
+  gap: 10px;
+}
+.moreMenu a {
+  display: grid;
+  gap: 6px;
+  min-height: 82px;
+  padding: 17px;
+  border: 1px solid #e0e5e2;
+  border-radius: 16px;
+  color: #24423a;
+  background: #fff;
+  text-decoration: none;
+}
+.moreMenu a b {
+  font-size: 17px;
+}
+.moreMenu a span {
+  color: #6d7874;
+  font-size: 12px;
+}
+.backButton {
+  min-height: 40px;
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
 }
 @media (max-width: 430px) {
   .calendar {
