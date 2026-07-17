@@ -356,6 +356,20 @@ progress::-webkit-progress-value {
 .card > .moveTask {
   margin-top: 8px;
 }
+.taskTools {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.deleteTask {
+  min-height: 40px;
+  padding: 7px 11px;
+  color: #a42b2b;
+  border-color: #e2b9b9;
+  font-size: 12px;
+}
 .movePicker {
   display: grid;
   gap: 8px;
