@@ -637,6 +637,7 @@ function Week({ d, upd }: { d: Data; upd: (d: Data) => void }) {
               </div>
             ))}
             {!ts.length && !es.length && <p className="muted">予定なし</p>}
+            <AddTask date={x} d={d} upd={upd} />
           </Card>
         );
       })}
