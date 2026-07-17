@@ -1,5 +1,11 @@
 import { useMemo, useRef, useState } from "react";
-import { NavLink, Route, Routes, useNavigate } from "react-router-dom";
+import {
+  NavLink,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import type { Data, Task } from "./types";
 import { initialData } from "./data";
 import { load, pct, phase, reset, save } from "./store";
@@ -22,7 +28,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Today d={d} upd={upd} />} />
           <Route path="/week" element={<Week d={d} upd={upd} />} />
-          <Route path="/calendar" element={<Calendar d={d} upd={upd} />} />
+          <Route path="/calendar" element={<Calendar d={d} />} />
           <Route path="/homework" element={<Homework d={d} />} />
           <Route path="/eiken" element={<Eiken d={d} upd={upd} />} />
           <Route path="/report" element={<Report d={d} />} />
@@ -118,7 +124,9 @@ function MoveTask({
   );
 }
 function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
-  const [date, setDate] = useState(today());
+  const location = useLocation();
+  const requestedDate = new URLSearchParams(location.search).get("date");
+  const [date, setDate] = useState(requestedDate || today());
   const tasks = d.tasks.filter((t) => t.date === date);
   const events = d.events.filter((e) => e.date === date);
   const done = tasks.filter((t) => t.status === "completed");
@@ -308,26 +316,18 @@ function Week({ d, upd }: { d: Data; upd: (d: Data) => void }) {
     </>
   );
 }
-function Calendar({ d, upd }: { d: Data; upd: (d: Data) => void }) {
-  const [selected, setSelected] = useState("2026-07-21");
-  const [detailOpen, setDetailOpen] = useState(false);
+function Calendar({ d }: { d: Data }) {
+  const navigate = useNavigate();
   const dates = Array.from({ length: 67 }, (_, i) => {
     const x = new Date("2026-07-21T00:00:00");
     x.setDate(x.getDate() + i);
     return x.toLocaleDateString("sv-SE");
   });
-  const selectedTasks = d.tasks.filter((task) => task.date === selected);
-  const selectedEvents = d.events.filter((event) => event.date === selected);
-  const selectedLabel = new Intl.DateTimeFormat("ja-JP", {
-    month: "long",
-    day: "numeric",
-    weekday: "long",
-  }).format(new Date(selected + "T00:00:00"));
   return (
     <>
       <Title
         t="カレンダー"
-        sub="日付をタップすると、その日の予定を確認できます"
+        sub="日付をタップすると、その日の学習画面へ移動します"
       />
       <div className="legend">
         <span>🟧 宿題</span>
@@ -342,14 +342,10 @@ function Calendar({ d, upd }: { d: Data; upd: (d: Data) => void }) {
           return (
             <button
               type="button"
-              aria-label={`${x}の予定を表示`}
-              aria-pressed={selected === x}
-              className={`day ${d.settings.accommodationDates.includes(x) ? "stay" : ""} ${selected === x ? "selected" : ""}`}
+              aria-label={`${x}の学習画面を開く`}
+              className={`day ${d.settings.accommodationDates.includes(x) ? "stay" : ""}`}
               key={x}
-              onClick={() => {
-                setSelected(x);
-                setDetailOpen(true);
-              }}
+              onClick={() => navigate(`/?date=${x}`)}
             >
               <b>{Number(x.slice(-2))}</b>
               <small>{x.slice(5, 7)}月</small>
@@ -372,46 +368,6 @@ function Calendar({ d, upd }: { d: Data; upd: (d: Data) => void }) {
           );
         })}
       </div>
-      {detailOpen && (
-        <Card className="calendarDetail">
-          <div className="between">
-            <span className="eyebrow">選択した日の予定</span>
-            <button
-              className="detailClose"
-              type="button"
-              aria-label="予定詳細を閉じる"
-              onClick={() => setDetailOpen(false)}
-            >
-              閉じる ×
-            </button>
-          </div>
-          <h2>{selectedLabel}</h2>
-          {selectedEvents.map((event) => (
-            <p key={event.id}>
-              {event.type === "class" ? "🏫" : "📝"}{" "}
-              {event.startTime && `${event.startTime}〜${event.endTime}　`}
-              <b>{event.title}</b>
-            </p>
-          ))}
-          {selectedTasks.map((task) => (
-            <div className="calendarTask" key={task.id}>
-              <p>
-                {task.status === "completed" ? "✅" : "□"} {task.subject}　
-                <b>{task.title}</b>（{task.estimatedMinutes}分）
-              </p>
-              <MoveTask task={task} d={d} upd={upd} />
-            </div>
-          ))}
-          {selected === "2026-07-31" && <p>🏁 夏休み宿題の家庭内完了期限</p>}
-          {selected === "2026-08-31" && <p>🏫 夏休み終了日</p>}
-          {!selectedTasks.length &&
-            !selectedEvents.length &&
-            selected !== "2026-07-31" &&
-            selected !== "2026-08-31" && (
-              <p className="muted">この日の予定はありません。</p>
-            )}
-        </Card>
-      )}
     </>
   );
 }
