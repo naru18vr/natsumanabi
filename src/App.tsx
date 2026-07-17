@@ -262,7 +262,7 @@ function Calendar({ d }: { d: Data }) {
   }).format(new Date(selected + "T00:00:00"));
   return (
     <>
-      <Title t="カレンダー" sub="期限と学習期間を確認" />
+      <Title t="カレンダー" sub="日付をタップすると、その日の予定を確認できます" />
       <div className="legend">
         <span>🟧 宿題</span>
         <span>🟦 英検</span>
