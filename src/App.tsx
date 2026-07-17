@@ -135,7 +135,9 @@ function AddTask({
   const [open, setOpen] = useState(false);
   const [taskName, setTaskName] = useState("ワーク");
   const [customName, setCustomName] = useState("");
-  const [detail, setDetail] = useState("");
+  const [range, setRange] = useState("指定なし");
+  const [customRange, setCustomRange] = useState("");
+  const [contents, setContents] = useState<string[]>([]);
   const [subject, setSubject] = useState("その他");
   const [minutes, setMinutes] = useState(15);
   const [priority, setPriority] = useState<Task["priority"]>("required");
@@ -143,9 +145,11 @@ function AddTask({
     const baseName =
       taskName === "その他（自由入力）" ? customName.trim() : taskName;
     if (!baseName) return;
-    const cleanTitle = detail.trim()
-      ? `${baseName}：${detail.trim()}`
-      : baseName;
+    const selectedRange = range === "その他の範囲" ? customRange.trim() : range;
+    const rangeText =
+      selectedRange && selectedRange !== "指定なし" ? `：${selectedRange}` : "";
+    const contentText = contents.length ? `（${contents.join("・")}）` : "";
+    const cleanTitle = `${baseName}${rangeText}${contentText}`;
     const now = new Date().toISOString();
     const task: Task = {
       id: `user-${Date.now()}-${crypto.randomUUID()}`,
@@ -170,7 +174,9 @@ function AddTask({
     upd({ ...d, tasks: [...d.tasks, task] });
     setTaskName("ワーク");
     setCustomName("");
-    setDetail("");
+    setRange("指定なし");
+    setCustomRange("");
+    setContents([]);
     setMinutes(15);
     setOpen(false);
   };
@@ -227,13 +233,67 @@ function AddTask({
               />
             </Label>
           )}
-          <Label t="ページ・範囲・内容（任意）">
-            <input
-              value={detail}
-              onChange={(e) => setDetail(e.target.value)}
-              placeholder="例：p.10〜15、英単語10個"
-            />
+          <Label t="ページ・範囲（1つ選択）">
+            <select value={range} onChange={(e) => setRange(e.target.value)}>
+              <option>指定なし</option>
+              <option>1ページ</option>
+              <option>2ページ</option>
+              <option>3ページ</option>
+              <option>5ページ</option>
+              <option>10ページ</option>
+              <option>15ページ</option>
+              <option>20ページ</option>
+              <option>1枚</option>
+              <option>2枚</option>
+              <option>3枚</option>
+              <option>5枚</option>
+              <option>10問</option>
+              <option>20問</option>
+              <option>全部</option>
+              <option>その他の範囲</option>
+            </select>
           </Label>
+          {range === "その他の範囲" && (
+            <Label t="範囲を入力">
+              <input
+                value={customRange}
+                onChange={(e) => setCustomRange(e.target.value)}
+                placeholder="例：p.10〜15、英単語10個"
+              />
+            </Label>
+          )}
+          <fieldset className="contentChecks">
+            <legend>取り組む内容（複数選択可）</legend>
+            {[
+              "問題を解く",
+              "丸付け",
+              "間違い直し",
+              "復習",
+              "予習",
+              "暗記",
+              "読む",
+              "聴く",
+              "調べる",
+              "下書き",
+              "清書",
+              "提出",
+            ].map((item) => (
+              <label key={item}>
+                <input
+                  type="checkbox"
+                  checked={contents.includes(item)}
+                  onChange={(e) =>
+                    setContents(
+                      e.target.checked
+                        ? [...contents, item]
+                        : contents.filter((value) => value !== item),
+                    )
+                  }
+                />
+                <span>{item}</span>
+              </label>
+            ))}
+          </fieldset>
           <Label t="科目">
             <select
               value={subject}
