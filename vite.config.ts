@@ -1,0 +1,2 @@
+import {defineConfig} from 'vite'; import react from '@vitejs/plugin-react'; import {VitePWA} from 'vite-plugin-pwa';
+export default defineConfig({base:'./',plugins:[react(),VitePWA({registerType:'prompt',manifest:{name:'なつまなび',short_name:'なつまなび',description:'夏休み宿題・学習管理',theme_color:'#126b5b',background_color:'#f6f4ec',display:'standalone',start_url:'./',icons:[{src:'icon.svg',sizes:'any',type:'image/svg+xml',purpose:'any maskable'}]},workbox:{globPatterns:['**/*.{js,css,html,svg}']}})]});
