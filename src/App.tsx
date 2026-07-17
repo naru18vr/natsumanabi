@@ -123,6 +123,126 @@ function MoveTask({
     </div>
   );
 }
+function AddTask({
+  date,
+  d,
+  upd,
+}: {
+  date: string;
+  d: Data;
+  upd: (d: Data) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [subject, setSubject] = useState("その他");
+  const [minutes, setMinutes] = useState(15);
+  const [priority, setPriority] = useState<Task["priority"]>("required");
+  const add = () => {
+    const cleanTitle = title.trim();
+    if (!cleanTitle) return;
+    const now = new Date().toISOString();
+    const task: Task = {
+      id: `user-${Date.now()}-${crypto.randomUUID()}`,
+      source: "user",
+      subject,
+      category: "追加予定",
+      type: "custom",
+      title: cleanTitle,
+      description: "自分で追加した予定",
+      date,
+      estimatedMinutes: Math.max(1, minutes || 1),
+      actualMinutes: 0,
+      priority,
+      status: "pending",
+      requiredTools: [],
+      availableLocations: ["どこでも実施可能"],
+      tags: [subject],
+      rescheduleHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    } as Task;
+    upd({ ...d, tasks: [...d.tasks, task] });
+    setTitle("");
+    setMinutes(15);
+    setOpen(false);
+  };
+  return (
+    <Card className="addTaskCard">
+      <button
+        className="addTaskButton"
+        type="button"
+        onClick={() => setOpen(!open)}
+      >
+        ＋ この日に予定を追加
+      </button>
+      {open && (
+        <div className="addTaskForm">
+          <p className="notice">{date} に追加します</p>
+          <Label t="タスク名">
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="例：英単語を10個覚える"
+            />
+          </Label>
+          <Label t="科目">
+            <select
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+            >
+              {[
+                "国語",
+                "数学",
+                "英語",
+                "理科",
+                "社会",
+                "音楽",
+                "美術",
+                "保健体育",
+                "家庭科",
+                "英検",
+                "その他",
+              ].map((item) => (
+                <option key={item}>{item}</option>
+              ))}
+            </select>
+          </Label>
+          <Label t="予定時間（分）">
+            <input
+              type="number"
+              min="1"
+              max="300"
+              value={minutes}
+              onChange={(e) => setMinutes(Number(e.target.value))}
+            />
+          </Label>
+          <Label t="区分">
+            <select
+              value={priority}
+              onChange={(e) => setPriority(e.target.value as Task["priority"])}
+            >
+              <option value="required">今日の必須</option>
+              <option value="normal">追加・短時間</option>
+            </select>
+          </Label>
+          <div className="actions">
+            <button
+              className="primary"
+              type="button"
+              disabled={!title.trim()}
+              onClick={add}
+            >
+              予定を追加
+            </button>
+            <button type="button" onClick={() => setOpen(false)}>
+              キャンセル
+            </button>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
 function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
   const location = useLocation();
   const requestedDate = new URLSearchParams(location.search).get("date");
@@ -209,6 +329,7 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
           {event.notes && <p>{event.notes}</p>}
         </Card>
       ))}
+      <AddTask date={date} d={d} upd={upd} />
       <h2>今日の必須</h2>
       {tasks.length ? (
         tasks
