@@ -19,6 +19,11 @@ import {
 const eigo = "https://naru18vr.github.io/eigo/";
 const today = () =>
   new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
+const addDays = (date: string, amount: number) => {
+  const next = new Date(`${date}T00:00:00`);
+  next.setDate(next.getDate() + amount);
+  return next.toLocaleDateString("sv-SE");
+};
 const dateLabel = (date: string) =>
   new Intl.DateTimeFormat("ja-JP", {
     month: "long",
@@ -38,6 +43,10 @@ const subjectIcon = (subject: string) =>
     家庭科: "🍳",
     英検: "🔤",
   })[subject] || "📝";
+const notify = (message: string) =>
+  window.dispatchEvent(
+    new CustomEvent("natsumanabi-notify", { detail: message }),
+  );
 export default function App() {
   const [d, setD] = useState<Data>(load);
   const [simpleMode, setSimpleMode] = useState(
@@ -46,6 +55,18 @@ export default function App() {
   const [largeText, setLargeText] = useState(
     () => localStorage.getItem("natsumanabi-text") === "large",
   );
+  const [toast, setToast] = useState("");
+  const [guideOpen, setGuideOpen] = useState(
+    () => localStorage.getItem("natsumanabi-guide") !== "done",
+  );
+  useEffect(() => {
+    const handler = (event: Event) => {
+      setToast((event as CustomEvent<string>).detail);
+      setTimeout(() => setToast(""), 2400);
+    };
+    window.addEventListener("natsumanabi-notify", handler);
+    return () => window.removeEventListener("natsumanabi-notify", handler);
+  }, []);
   const upd = (x: Data) => {
     setD(x);
     save(x);
@@ -54,6 +75,8 @@ export default function App() {
     <div
       className={`app ${simpleMode ? "simpleMode" : "detailMode"} ${largeText ? "largeText" : ""}`}
     >
+      {toast && <div className="successToast">{toast}</div>}
+      <UpdateBanner />
       <header>
         <span className="logo">なつまなび</span>
         <div className="headerTools">
@@ -83,7 +106,7 @@ export default function App() {
           >
             文字{largeText ? "大" : "標準"}
           </button>
-          <span className="badge">v1.5</span>
+          <span className="badge">v1.6</span>
         </div>
       </header>
       <main>
@@ -113,6 +136,61 @@ export default function App() {
         ))}
       </nav>
       {!d.settings.setupDone && <Setup d={d} upd={upd} />}
+      {d.settings.setupDone && guideOpen && (
+        <QuickGuide onClose={() => setGuideOpen(false)} />
+      )}
+    </div>
+  );
+}
+function UpdateBanner() {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.ready.then((registration) => {
+      registration.update();
+      registration.addEventListener("updatefound", () => setReady(true));
+    });
+  }, []);
+  if (!ready) return null;
+  return (
+    <div className="updateBanner">
+      <span>新しいバージョンがあります</span>
+      <button type="button" onClick={() => location.reload()}>更新する</button>
+    </div>
+  );
+}
+function QuickGuide({ onClose }: { onClose: () => void }) {
+  const [step, setStep] = useState(0);
+  const guides = [
+    ["① 今日やることを見る", "最初の画面に、次にやる1つが出ます。"],
+    ["② 終わったら『できた』", "少しだけなら『少しできた』で大丈夫。"],
+    ["③ 予定を変える", "『別の日へ』を押せば、いつでも動かせます。"],
+  ];
+  const finish = () => {
+    localStorage.setItem("natsumanabi-guide", "done");
+    onClose();
+  };
+  return (
+    <div className="modal">
+      <div className="guideCard">
+        <span className="eyebrow">30秒でわかる使い方</span>
+        <div className="guideIcon">{["📋", "✅", "📅"][step]}</div>
+        <h1>{guides[step][0]}</h1>
+        <p>{guides[step][1]}</p>
+        <div className="guideDots">
+          {guides.map((_, index) => (
+            <i key={index} className={index === step ? "active" : ""} />
+          ))}
+        </div>
+        <button
+          className="primary wide"
+          type="button"
+          onClick={() => (step < 2 ? setStep(step + 1) : finish())}
+        >
+          {step < 2 ? "次へ →" : "わかった！はじめる"}
+        </button>
+        <button className="guideSkip" type="button" onClick={finish}>あとで見る</button>
+      </div>
     </div>
   );
 }
@@ -157,6 +235,12 @@ function MoveTask({
       ),
     });
     setOpen(false);
+    notify(`${dateLabel(destination)}に移動しました ✓`);
+  };
+  const weekend = (targetDay: 6 | 0) => {
+    const current = new Date(`${task.date}T00:00:00`);
+    const diff = (targetDay - current.getDay() + 7) % 7 || 7;
+    return addDays(task.date, diff);
   };
   return (
     <div className="moveTask">
@@ -165,6 +249,12 @@ function MoveTask({
       </button>
       {open && (
         <div className="movePicker">
+          <b>いつにする？</b>
+          <div className="moveQuick">
+            <button type="button" onClick={() => setDestination(addDays(task.date, 1))}>明日</button>
+            <button type="button" onClick={() => setDestination(weekend(6))}>土曜日</button>
+            <button type="button" onClick={() => setDestination(weekend(0))}>日曜日</button>
+          </div>
           <input
             aria-label="移動先の日付"
             type="date"
@@ -213,11 +303,13 @@ function DeleteTask({
         ),
       );
       upd({ ...d, tasks: d.tasks.filter((item) => item.id !== task.id) });
+      notify("削除しました");
     }, 5000);
   };
   const undo = () => {
     if (timer.current) clearTimeout(timer.current);
     setPendingDelete(false);
+    notify("元に戻しました ✓");
   };
   if (pendingDelete)
     return (
@@ -269,6 +361,7 @@ function TrashRestore({ d, upd }: { d: Data; upd: (d: Data) => void }) {
     const next = items.filter((item) => item.deletedAt !== entry.deletedAt);
     setItems(next);
     localStorage.setItem("natsumanabi-trash", JSON.stringify(next));
+    notify("予定を元に戻しました ✓");
   };
   if (!items.length) return <p className="muted">削除履歴はありません。</p>;
   return (
@@ -318,6 +411,7 @@ function EditTask({
       ),
     });
     setOpen(false);
+    notify("変更を保存しました ✓");
   };
   return (
     <div className="editTask">
@@ -384,6 +478,42 @@ function AddTask({
   const [subject, setSubject] = useState("その他");
   const [minutes, setMinutes] = useState(15);
   const [priority, setPriority] = useState<Task["priority"]>("required");
+  const draftKey = `natsumanabi-draft-${date}`;
+  const loadDraft = () => {
+    try {
+      const draft = JSON.parse(localStorage.getItem(draftKey) || "null");
+      if (!draft) return;
+      setTaskName(draft.taskName || "ワーク");
+      setCustomName(draft.customName || "");
+      setRange(draft.range || "指定なし");
+      setCustomRange(draft.customRange || "");
+      setContents(draft.contents || []);
+      setSubject(draft.subject || "その他");
+      setMinutes(draft.minutes || 15);
+      setPriority(draft.priority || "required");
+      setStep(draft.step || 1);
+      notify("入力途中から再開しました");
+    } catch {
+      localStorage.removeItem(draftKey);
+    }
+  };
+  useEffect(() => {
+    if (!open) return;
+    localStorage.setItem(
+      draftKey,
+      JSON.stringify({
+        taskName,
+        customName,
+        range,
+        customRange,
+        contents,
+        subject,
+        minutes,
+        priority,
+        step,
+      }),
+    );
+  }, [open, draftKey, taskName, customName, range, customRange, contents, subject, minutes, priority, step]);
   const add = () => {
     const baseName =
       taskName === "その他（自由入力）" ? customName.trim() : taskName;
@@ -416,6 +546,7 @@ function AddTask({
     } as Task;
     const reviews = contents.includes("間違い直し") ? reviewCopies(task) : [];
     upd({ ...d, tasks: [...d.tasks, task, ...reviews] });
+    notify(`${dateLabel(date)}に追加しました ✓`);
     setTaskName("ワーク");
     setCustomName("");
     setRange("指定なし");
@@ -423,6 +554,7 @@ function AddTask({
     setContents([]);
     setMinutes(15);
     setStep(1);
+    localStorage.removeItem(draftKey);
     setOpen(false);
   };
   const previewBase =
@@ -443,7 +575,10 @@ function AddTask({
       <button
         className="addTaskButton"
         type="button"
-        onClick={() => setOpen(!open)}
+        onClick={() => {
+          if (!open) loadDraft();
+          setOpen(!open);
+        }}
       >
         ＋ この日に予定を追加
       </button>
@@ -936,6 +1071,9 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
       >
         {focusMode ? "一覧に戻る" : "🎯 今からやる1つだけを見る"}
       </button>
+      <details className="todaySupport">
+        <summary>＋ 予定の追加・整理</summary>
+        <div>
       <div className="quickTemplates">
         <b>よく使う予定</b>
         <div>
@@ -1013,6 +1151,8 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
           💾 記録を守るため、バックアップしておこう
         </NavLink>
       )}
+        </div>
+      </details>
       {events.map((event) => (
         <Card key={event.id} className="classEvent">
           <span className="subject">夏期講習</span>
@@ -1669,6 +1809,17 @@ function More() {
           <b>⚙️ 設定</b>
           <span>時間・バックアップ・元に戻す</span>
         </NavLink>
+        <button
+          className="moreGuide"
+          type="button"
+          onClick={() => {
+            localStorage.removeItem("natsumanabi-guide");
+            location.reload();
+          }}
+        >
+          <b>❓ 使い方を見る</b>
+          <span>最初のかんたん説明をもう一度見る</span>
+        </button>
       </div>
     </>
   );
