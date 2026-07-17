@@ -51,6 +51,26 @@ header {
   justify-content: space-between;
   padding: 0 18px;
 }
+.headerTools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.headerTools button {
+  min-height: 36px;
+  padding: 5px 7px;
+  border-radius: 9px;
+  font-size: 10px;
+}
+.largeText {
+  font-size: 18px;
+}
+.largeText .card p,
+.largeText button,
+.largeText input,
+.largeText select {
+  font-size: 1rem;
+}
 .logo {
   font-size: 21px;
   font-weight: 800;
@@ -537,6 +557,100 @@ progress::-webkit-progress-value {
   cursor: pointer;
   font-size: 12px;
   font-weight: 700;
+}
+.timerPanel {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  background: #eef4ff;
+}
+.timerPanel b {
+  margin-right: auto;
+  font-variant-numeric: tabular-nums;
+}
+.timerPanel button,
+.orderButtons button {
+  min-height: 40px;
+  padding: 7px 10px;
+  font-size: 12px;
+}
+.orderButtons {
+  display: flex;
+  gap: 5px;
+}
+.focusButton {
+  width: 100%;
+  margin: 4px 0 10px;
+  border: 2px solid #126b5b;
+  color: #126b5b;
+}
+.focusButton.active {
+  color: #fff;
+  background: #126b5b;
+}
+.quickTemplates {
+  margin: 12px 0;
+  padding: 12px;
+  border-radius: 14px;
+  background: #fff;
+}
+.quickTemplates > b {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+.quickTemplates > div {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+}
+.quickTemplates button {
+  min-width: max-content;
+  min-height: 42px;
+  padding: 7px 10px;
+  font-size: 11px;
+}
+.overdueCard {
+  border-left: 7px solid #d1753d;
+}
+.overdueCard small {
+  display: block;
+  margin: 4px 0;
+}
+.adjustCard {
+  border-left: 7px solid #7d5cb5;
+  background: #f8f4ff;
+}
+.forecastNotice {
+  margin: 10px 0;
+  padding: 12px;
+  border-radius: 12px;
+  background: #eaf3ff;
+  color: #315576;
+  font-size: 12px;
+  font-weight: 700;
+}
+.trashList > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 0;
+  border-top: 1px solid #e6e9e7;
+}
+.trashList span {
+  display: grid;
+  margin-right: auto;
+  font-size: 13px;
+}
+.trashList small {
+  color: #71807b;
+}
+.simpleMode .forecastNotice,
+.simpleMode .quickTemplates {
+  display: none;
 }
 .movePicker {
   display: grid;
