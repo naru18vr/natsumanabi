@@ -213,7 +213,9 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
       {tasks.length ? (
         tasks
           .filter((t) => t.priority === "required")
-          .map((t) => <TaskRow key={t.id} t={t} status={status} />)
+          .map((t) => (
+            <TaskRow key={t.id} t={t} status={status} d={d} upd={upd} />
+          ))
       ) : (
         <Card>
           <p>この日の予定はありません。設定や週間画面から確認できます。</p>
@@ -223,7 +225,7 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
       {tasks
         .filter((t) => t.priority !== "required")
         .map((t) => (
-          <TaskRow key={t.id} t={t} status={status} />
+          <TaskRow key={t.id} t={t} status={status} d={d} upd={upd} />
         ))}
       <a className="button secondary" href={eigo} target="_blank">
         英検アプリを開く ↗
@@ -234,9 +236,13 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
 function TaskRow({
   t,
   status,
+  d,
+  upd,
 }: {
   t: Task;
   status: (t: Task, s: Task["status"]) => void;
+  d: Data;
+  upd: (d: Data) => void;
 }) {
   return (
     <Card className={t.status === "completed" ? "done" : ""}>
@@ -264,6 +270,7 @@ function TaskRow({
         <button onClick={() => status(t, "partial")}>一部完了</button>
         <button onClick={() => status(t, "rescheduled")}>明日に調整</button>
       </div>
+      <MoveTask task={t} d={d} upd={upd} />
     </Card>
   );
 }
