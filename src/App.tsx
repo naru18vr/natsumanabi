@@ -22,7 +22,7 @@ export default function App() {
     <div className="app">
       <header>
         <span className="logo">なつまなび</span>
-        <span className="badge">端末保存・v1.2</span>
+        <span className="badge">端末保存・v1.3</span>
       </header>
       <main>
         <Routes>
@@ -133,8 +133,29 @@ function DeleteTask({
   upd: (d: Data) => void;
 }) {
   const [confirming, setConfirming] = useState(false);
-  const remove = () =>
-    upd({ ...d, tasks: d.tasks.filter((item) => item.id !== task.id) });
+  const [pendingDelete, setPendingDelete] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const remove = () => {
+    setPendingDelete(true);
+    setConfirming(false);
+    timer.current = setTimeout(
+      () => upd({ ...d, tasks: d.tasks.filter((item) => item.id !== task.id) }),
+      5000,
+    );
+  };
+  const undo = () => {
+    if (timer.current) clearTimeout(timer.current);
+    setPendingDelete(false);
+  };
+  if (pendingDelete)
+    return (
+      <div className="undoDelete">
+        <span>削除しました</span>
+        <button type="button" onClick={undo}>
+          元に戻す
+        </button>
+      </div>
+    );
   if (confirming)
     return (
       <div className="deleteConfirm">
@@ -158,6 +179,84 @@ function DeleteTask({
     >
       🗑 削除
     </button>
+  );
+}
+function EditTask({
+  task,
+  d,
+  upd,
+}: {
+  task: Task;
+  d: Data;
+  upd: (d: Data) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState(task.title);
+  const [subject, setSubject] = useState(task.subject);
+  const [minutes, setMinutes] = useState(task.estimatedMinutes);
+  const [priority, setPriority] = useState(task.priority);
+  const saveEdit = () => {
+    if (!title.trim()) return;
+    upd({
+      ...d,
+      tasks: d.tasks.map((item) =>
+        item.id === task.id
+          ? {
+              ...item,
+              title: title.trim(),
+              subject,
+              estimatedMinutes: Math.max(1, minutes),
+              priority,
+            }
+          : item,
+      ),
+    });
+    setOpen(false);
+  };
+  return (
+    <div className="editTask">
+      <button type="button" onClick={() => setOpen(!open)}>
+        ✏️ 編集
+      </button>
+      {open && (
+        <div className="editPanel">
+          <Label t="タスク名">
+            <input value={title} onChange={(e) => setTitle(e.target.value)} />
+          </Label>
+          <Label t="科目">
+            <input
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+            />
+          </Label>
+          <Label t="予定時間（分）">
+            <input
+              type="number"
+              min="1"
+              value={minutes}
+              onChange={(e) => setMinutes(Number(e.target.value))}
+            />
+          </Label>
+          <Label t="表示場所">
+            <select
+              value={priority}
+              onChange={(e) => setPriority(e.target.value as Task["priority"])}
+            >
+              <option value="required">今日の必須</option>
+              <option value="normal">余裕があれば</option>
+            </select>
+          </Label>
+          <div className="actions">
+            <button className="primary" type="button" onClick={saveEdit}>
+              保存
+            </button>
+            <button type="button" onClick={() => setOpen(false)}>
+              閉じる
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 function AddTask({
@@ -225,6 +324,13 @@ function AddTask({
       : taskName;
   const previewRange = range === "その他の範囲" ? customRange.trim() : range;
   const previewTitle = `${previewBase}${previewRange && previewRange !== "指定なし" ? `：${previewRange}` : ""}${contents.length ? `（${contents.join("・")}）` : ""}`;
+  const subjectMaterials: Record<string, string[]> = {
+    数学: ["ドラゴン桜計算プリント", "キホンの夏", "1年生の復習評価テスト"],
+    英語: ["めきめきEnglish 2", "英単語", "プリント"],
+    理科: ["3年間の総仕上げ問題集", "学習整理 理科", "プリント"],
+    英検: ["英検4級学習", "英単語", "リスニング"],
+    国語: ["読書", "レポート", "調べ学習"],
+  };
   return (
     <Card className="addTaskCard">
       <button
@@ -246,7 +352,7 @@ function AddTask({
             ))}
             <span>{step} / 4</span>
           </div>
-          {step === 1 && (
+          {step === 2 && (
             <div className="stepPanel">
               <h3>📚 なにを、どこまで？</h3>
               <Label t="① なにをする？">
@@ -254,6 +360,13 @@ function AddTask({
                   value={taskName}
                   onChange={(e) => setTaskName(e.target.value)}
                 >
+                  {(subjectMaterials[subject] || []).length > 0 && (
+                    <optgroup label={`${subject}のおすすめ`}>
+                      {subjectMaterials[subject].map((item) => (
+                        <option key={item}>{item}</option>
+                      ))}
+                    </optgroup>
+                  )}
                   <optgroup label="ワーク・教材">
                     <option>ワーク</option>
                     <option>ドラゴン桜計算プリント</option>
@@ -324,7 +437,7 @@ function AddTask({
               )}
             </div>
           )}
-          {step === 2 && (
+          {step === 3 && (
             <fieldset className="contentChecks">
               <legend>✅ やることをタップ（いくつでもOK）</legend>
               {[
@@ -358,7 +471,7 @@ function AddTask({
               ))}
             </fieldset>
           )}
-          {step === 3 && (
+          {step === 1 && (
             <div className="stepPanel">
               <h3>🎒 何の教科？</h3>
               <div className="subjectChoices">
@@ -463,7 +576,7 @@ function AddTask({
                 className="primary"
                 type="button"
                 disabled={
-                  step === 1 &&
+                  step === 2 &&
                   taskName === "その他（自由入力）" &&
                   !customName.trim()
                 }
@@ -493,9 +606,24 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
   const location = useLocation();
   const requestedDate = new URLSearchParams(location.search).get("date");
   const [date, setDate] = useState(requestedDate || today());
+  const [success, setSuccess] = useState("");
   const tasks = d.tasks.filter((t) => t.date === date);
   const events = d.events.filter((e) => e.date === date);
   const done = tasks.filter((t) => t.status === "completed");
+  const classMinutes = events
+    .filter(
+      (event) => event.type === "class" && event.startTime && event.endTime,
+    )
+    .reduce((sum, event) => {
+      const [sh, sm] = event.startTime!.split(":").map(Number);
+      const [eh, em] = event.endTime!.split(":").map(Number);
+      return sum + (eh * 60 + em - sh * 60 - sm) + (event.travelMinutes || 0);
+    }, 0);
+  const lastBackup = Number(
+    localStorage.getItem("natsumanabi-last-backup") || 0,
+  );
+  const needsBackup =
+    !lastBackup || Date.now() - lastBackup > 7 * 24 * 60 * 60 * 1000;
   const mins = tasks.reduce((s, t) => s + t.estimatedMinutes, 0);
   const actual = done.reduce(
     (s, t) => s + (t.actualMinutes || t.estimatedMinutes),
@@ -529,9 +657,19 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
           : a,
       ),
     });
+    if (s === "completed") {
+      setSuccess(`できた！ ${t.title}`);
+      setTimeout(() => setSuccess(""), 2200);
+    }
   }
+  const changeDate = (days: number) => {
+    const next = new Date(date + "T00:00:00");
+    next.setDate(next.getDate() + days);
+    setDate(next.toLocaleDateString("sv-SE"));
+  };
   return (
     <>
+      {success && <div className="successToast">🎉 {success}</div>}
       <div className="hero">
         <div>
           <span>{phase(date)}期間</span>
@@ -565,6 +703,28 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
           <small>残り</small>
         </div>
       </div>
+      <div className="dateNav">
+        <button type="button" onClick={() => changeDate(-1)}>
+          ← 前の日
+        </button>
+        <button type="button" onClick={() => setDate(today())}>
+          今日
+        </button>
+        <button type="button" onClick={() => changeDate(1)}>
+          次の日 →
+        </button>
+      </div>
+      {classMinutes > 0 && (
+        <div className="loadNotice">
+          🏫 今日は塾が{Math.round(classMinutes / 60)}
+          時間。家の勉強は少なめでOK！
+        </div>
+      )}
+      {needsBackup && (
+        <NavLink className="backupNotice" to="/settings">
+          💾 記録を守るため、バックアップしておこう
+        </NavLink>
+      )}
       {events.map((event) => (
         <Card key={event.id} className="classEvent">
           <span className="subject">夏期講習</span>
@@ -611,6 +771,19 @@ function TaskRow({
   d: Data;
   upd: (d: Data) => void;
 }) {
+  const [partialOpen, setPartialOpen] = useState(false);
+  const [partialAmount, setPartialAmount] = useState(t.completedAmount || 0);
+  const savePartial = () => {
+    upd({
+      ...d,
+      tasks: d.tasks.map((item) =>
+        item.id === t.id
+          ? { ...item, status: "partial", completedAmount: partialAmount }
+          : item,
+      ),
+    });
+    setPartialOpen(false);
+  };
   return (
     <Card className={t.status === "completed" ? "done" : ""}>
       <div className="task">
@@ -634,18 +807,50 @@ function TaskRow({
         </div>
       </div>
       <div className="actions">
-        <button onClick={() => status(t, "partial")}>一部完了</button>
+        <button
+          onClick={() =>
+            t.totalAmount ? setPartialOpen(!partialOpen) : status(t, "partial")
+          }
+        >
+          少しできた
+        </button>
         <button onClick={() => status(t, "rescheduled")}>明日に調整</button>
       </div>
-      <div className="taskTools">
-        <MoveTask task={t} d={d} upd={upd} />
-        <DeleteTask task={t} d={d} upd={upd} />
-      </div>
+      {partialOpen && t.totalAmount && (
+        <div className="partialPanel">
+          <b>どこまでできた？</b>
+          <div>
+            <input
+              type="number"
+              min="0"
+              max={t.totalAmount}
+              value={partialAmount}
+              onChange={(e) => setPartialAmount(Number(e.target.value))}
+            />
+            <span>
+              ／ {t.totalAmount}
+              {t.unit}
+            </span>
+          </div>
+          <button className="primary" type="button" onClick={savePartial}>
+            記録する
+          </button>
+        </div>
+      )}
+      <details className="moreActions">
+        <summary>編集・日付変更・削除</summary>
+        <div className="taskTools">
+          <EditTask task={t} d={d} upd={upd} />
+          <MoveTask task={t} d={d} upd={upd} />
+          <DeleteTask task={t} d={d} upd={upd} />
+        </div>
+      </details>
     </Card>
   );
 }
 function Week({ d, upd }: { d: Data; upd: (d: Data) => void }) {
   const [start, setStart] = useState("2026-07-21");
+  const [openDay, setOpenDay] = useState("");
   const ds = Array.from({ length: 7 }, (_, i) => {
     const x = new Date(start + "T00:00:00");
     x.setDate(x.getDate() + i);
@@ -667,30 +872,46 @@ function Week({ d, upd }: { d: Data; upd: (d: Data) => void }) {
         }).format(new Date(x + "T00:00:00"));
         return (
           <Card key={x}>
-            <h3>
-              {x}（{weekday}）{" "}
-              <span className="muted">
-                {ts.reduce((a, t) => a + t.estimatedMinutes, 0)}分
+            <button
+              className="dayToggle"
+              type="button"
+              onClick={() => setOpenDay(openDay === x ? "" : x)}
+            >
+              <span>
+                <b>
+                  {x}（{weekday}）
+                </b>
+                <small>
+                  {ts.length}個・
+                  {ts.reduce((a, t) => a + t.estimatedMinutes, 0)}分
+                </small>
               </span>
-            </h3>
-            {es.map((event) => (
-              <p key={event.id}>
-                🏫 {event.startTime}〜{event.endTime} {event.title}
-              </p>
-            ))}
-            {ts.map((t) => (
-              <div className="weekTask" key={t.id}>
-                <p>
-                  {t.status === "completed" ? "✅" : "□"} {t.subject}　{t.title}
-                </p>
-                <div className="taskTools">
-                  <MoveTask task={t} d={d} upd={upd} />
-                  <DeleteTask task={t} d={d} upd={upd} />
-                </div>
+              <b>{openDay === x ? "▲" : "▼"}</b>
+            </button>
+            {openDay === x && (
+              <div className="dayContents">
+                {es.map((event) => (
+                  <p key={event.id}>
+                    🏫 {event.startTime}〜{event.endTime} {event.title}
+                  </p>
+                ))}
+                {ts.map((t) => (
+                  <div className="weekTask" key={t.id}>
+                    <p>
+                      {t.status === "completed" ? "✅" : "□"} {t.subject}　
+                      {t.title}
+                    </p>
+                    <div className="taskTools">
+                      <EditTask task={t} d={d} upd={upd} />
+                      <MoveTask task={t} d={d} upd={upd} />
+                      <DeleteTask task={t} d={d} upd={upd} />
+                    </div>
+                  </div>
+                ))}
+                {!ts.length && !es.length && <p className="muted">予定なし</p>}
+                <AddTask date={x} d={d} upd={upd} />
               </div>
-            ))}
-            {!ts.length && !es.length && <p className="muted">予定なし</p>}
-            <AddTask date={x} d={d} upd={upd} />
+            )}
           </Card>
         );
       })}
@@ -969,6 +1190,7 @@ function Settings({ d, upd }: { d: Data; upd: (d: Data) => void }) {
     a.href = URL.createObjectURL(b);
     a.download = `なつまなび-backup-${today()}.json`;
     a.click();
+    localStorage.setItem("natsumanabi-last-backup", String(Date.now()));
   }
   return (
     <>
