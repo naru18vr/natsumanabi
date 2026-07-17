@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   NavLink,
   Route,
@@ -9,20 +9,63 @@ import {
 import type { Data, Task } from "./types";
 import { initialData } from "./data";
 import { load, pct, phase, reset, save } from "./store";
+import {
+  aggregateMaterials,
+  deadlineForecast,
+  overdueTasks,
+  rebalanceDay,
+  reviewCopies,
+} from "./planner";
 const eigo = "https://naru18vr.github.io/eigo/";
 const today = () =>
   new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
 export default function App() {
   const [d, setD] = useState<Data>(load);
+  const [simpleMode, setSimpleMode] = useState(
+    () => localStorage.getItem("natsumanabi-view") !== "detail",
+  );
+  const [largeText, setLargeText] = useState(
+    () => localStorage.getItem("natsumanabi-text") === "large",
+  );
   const upd = (x: Data) => {
     setD(x);
     save(x);
   };
   return (
-    <div className="app">
+    <div
+      className={`app ${simpleMode ? "simpleMode" : "detailMode"} ${largeText ? "largeText" : ""}`}
+    >
       <header>
         <span className="logo">なつまなび</span>
-        <span className="badge">端末保存・v1.3</span>
+        <div className="headerTools">
+          <button
+            type="button"
+            onClick={() => {
+              const next = !simpleMode;
+              setSimpleMode(next);
+              localStorage.setItem(
+                "natsumanabi-view",
+                next ? "simple" : "detail",
+              );
+            }}
+          >
+            {simpleMode ? "かんたん" : "詳細"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const next = !largeText;
+              setLargeText(next);
+              localStorage.setItem(
+                "natsumanabi-text",
+                next ? "large" : "normal",
+              );
+            }}
+          >
+            文字{largeText ? "大" : "標準"}
+          </button>
+          <span className="badge">v1.4</span>
+        </div>
       </header>
       <main>
         <Routes>
@@ -138,10 +181,21 @@ function DeleteTask({
   const remove = () => {
     setPendingDelete(true);
     setConfirming(false);
-    timer.current = setTimeout(
-      () => upd({ ...d, tasks: d.tasks.filter((item) => item.id !== task.id) }),
-      5000,
-    );
+    timer.current = setTimeout(() => {
+      const trash = JSON.parse(
+        localStorage.getItem("natsumanabi-trash") || "[]",
+      );
+      localStorage.setItem(
+        "natsumanabi-trash",
+        JSON.stringify(
+          [{ task, deletedAt: new Date().toISOString() }, ...trash].slice(
+            0,
+            30,
+          ),
+        ),
+      );
+      upd({ ...d, tasks: d.tasks.filter((item) => item.id !== task.id) });
+    }, 5000);
   };
   const undo = () => {
     if (timer.current) clearTimeout(timer.current);
@@ -179,6 +233,40 @@ function DeleteTask({
     >
       🗑 削除
     </button>
+  );
+}
+function TrashRestore({ d, upd }: { d: Data; upd: (d: Data) => void }) {
+  const [items, setItems] = useState<{ task: Task; deletedAt: string }[]>(
+    () => {
+      try {
+        return JSON.parse(localStorage.getItem("natsumanabi-trash") || "[]");
+      } catch {
+        return [];
+      }
+    },
+  );
+  const restore = (entry: { task: Task; deletedAt: string }) => {
+    if (!d.tasks.some((task) => task.id === entry.task.id))
+      upd({ ...d, tasks: [...d.tasks, entry.task] });
+    const next = items.filter((item) => item.deletedAt !== entry.deletedAt);
+    setItems(next);
+    localStorage.setItem("natsumanabi-trash", JSON.stringify(next));
+  };
+  if (!items.length) return <p className="muted">削除履歴はありません。</p>;
+  return (
+    <div className="trashList">
+      {items.slice(0, 10).map((entry) => (
+        <div key={entry.deletedAt}>
+          <span>
+            {entry.task.title}
+            <small>{entry.task.date}</small>
+          </span>
+          <button type="button" onClick={() => restore(entry)}>
+            復元
+          </button>
+        </div>
+      ))}
+    </div>
   );
 }
 function EditTask({
@@ -308,7 +396,8 @@ function AddTask({
       createdAt: now,
       updatedAt: now,
     } as Task;
-    upd({ ...d, tasks: [...d.tasks, task] });
+    const reviews = contents.includes("間違い直し") ? reviewCopies(task) : [];
+    upd({ ...d, tasks: [...d.tasks, task, ...reviews] });
     setTaskName("ワーク");
     setCustomName("");
     setRange("指定なし");
@@ -607,6 +696,7 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
   const requestedDate = new URLSearchParams(location.search).get("date");
   const [date, setDate] = useState(requestedDate || today());
   const [success, setSuccess] = useState("");
+  const [focusMode, setFocusMode] = useState(false);
   const tasks = d.tasks.filter((t) => t.date === date);
   const events = d.events.filter((e) => e.date === date);
   const done = tasks.filter((t) => t.status === "completed");
@@ -624,6 +714,13 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
   );
   const needsBackup =
     !lastBackup || Date.now() - lastBackup > 7 * 24 * 60 * 60 * 1000;
+  const overdue = overdueTasks(d.tasks, date);
+  const forecasts = deadlineForecast(d.tasks, date);
+  const requiredTasks = tasks.filter((task) => task.priority === "required");
+  const optionalTasks = tasks.filter((task) => task.priority !== "required");
+  const displayedRequired = focusMode
+    ? requiredTasks.filter((task) => task.status !== "completed").slice(0, 1)
+    : requiredTasks;
   const mins = tasks.reduce((s, t) => s + t.estimatedMinutes, 0);
   const actual = done.reduce(
     (s, t) => s + (t.actualMinutes || t.estimatedMinutes),
@@ -666,6 +763,66 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
     const next = new Date(date + "T00:00:00");
     next.setDate(next.getDate() + days);
     setDate(next.toLocaleDateString("sv-SE"));
+  };
+  const moveOverdueToToday = () =>
+    upd({
+      ...d,
+      tasks: d.tasks.map((task) =>
+        overdue.some((item) => item.id === task.id)
+          ? {
+              ...task,
+              date,
+              rescheduleHistory: [
+                ...task.rescheduleHistory,
+                `${task.date}→${date}（未完了整理）`,
+              ],
+            }
+          : task,
+      ),
+    });
+  const reorder = (task: Task, direction: -1 | 1) => {
+    const indices = d.tasks
+      .map((item, index) => ({ item, index }))
+      .filter(
+        ({ item }) =>
+          item.date === task.date && item.priority === task.priority,
+      );
+    const position = indices.findIndex(({ item }) => item.id === task.id);
+    const target = indices[position + direction];
+    if (!target) return;
+    const sourceIndex = indices[position].index;
+    const next = [...d.tasks];
+    [next[sourceIndex], next[target.index]] = [
+      next[target.index],
+      next[sourceIndex],
+    ];
+    upd({ ...d, tasks: next });
+  };
+  const quickAdd = (title: string, subject: string, minutes: number) => {
+    const base = initialData().tasks[0];
+    upd({
+      ...d,
+      tasks: [
+        ...d.tasks,
+        {
+          ...base,
+          id: `quick-${crypto.randomUUID()}`,
+          source: "quick-template",
+          category: "追加予定",
+          type: "custom",
+          title,
+          subject,
+          date,
+          estimatedMinutes: minutes,
+          totalAmount: undefined,
+          completedAmount: 0,
+          unit: undefined,
+          status: "pending",
+          priority: "required",
+          rescheduleHistory: [],
+        },
+      ],
+    });
   };
   return (
     <>
@@ -714,6 +871,79 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
           次の日 →
         </button>
       </div>
+      <button
+        className={`focusButton ${focusMode ? "active" : ""}`}
+        type="button"
+        onClick={() => setFocusMode(!focusMode)}
+      >
+        {focusMode ? "一覧に戻る" : "🎯 今からやる1つだけを見る"}
+      </button>
+      <div className="quickTemplates">
+        <b>よく使う予定</b>
+        <div>
+          <button type="button" onClick={() => quickAdd("英単語", "英語", 10)}>
+            英単語 10分
+          </button>
+          <button
+            type="button"
+            onClick={() => quickAdd("数学プリント：2枚", "数学", 20)}
+          >
+            数学プリント
+          </button>
+          <button
+            type="button"
+            onClick={() => quickAdd("間違い直し", "その他", 15)}
+          >
+            間違い直し
+          </button>
+        </div>
+      </div>
+      {overdue.length > 0 && (
+        <Card className="overdueCard">
+          <h3>📦 前の日から残っている予定</h3>
+          <p>{overdue.length}件あります。責めずに、今日へ調整しよう。</p>
+          {overdue.slice(0, 4).map((task) => (
+            <small key={task.id}>・{task.title}</small>
+          ))}
+          <button
+            className="primary wide"
+            type="button"
+            onClick={moveOverdueToToday}
+          >
+            まとめて今日へ移動
+          </button>
+        </Card>
+      )}
+      {mins > d.settings.dailyLimitMinutes && (
+        <Card className="adjustCard">
+          <h3>🪄 今日は少し多め</h3>
+          <p>
+            {mins}分の予定を、上限{d.settings.dailyLimitMinutes}分に近づけます。
+          </p>
+          <button
+            className="primary wide"
+            type="button"
+            onClick={() =>
+              upd({
+                ...d,
+                tasks: rebalanceDay(
+                  d.tasks,
+                  date,
+                  d.settings.dailyLimitMinutes,
+                ),
+              })
+            }
+          >
+            余裕タスクを明日へ調整
+          </button>
+        </Card>
+      )}
+      {forecasts[0] && (
+        <div className="forecastNotice">
+          🏁 {forecasts[0].dueDate}まで、1日約{forecasts[0].minutesPerDay}
+          分で進めると間に合います
+        </div>
+      )}
       {classMinutes > 0 && (
         <div className="loadNotice">
           🏫 今日は塾が{Math.round(classMinutes / 60)}
@@ -737,22 +967,35 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
       ))}
       <AddTask date={date} d={d} upd={upd} />
       <h2>今日の必須</h2>
-      {tasks.length ? (
-        tasks
-          .filter((t) => t.priority === "required")
-          .map((t) => (
-            <TaskRow key={t.id} t={t} status={status} d={d} upd={upd} />
-          ))
+      {displayedRequired.length ? (
+        displayedRequired.map((t) => (
+          <TaskRow
+            key={t.id}
+            t={t}
+            status={status}
+            d={d}
+            upd={upd}
+            onUp={() => reorder(t, -1)}
+            onDown={() => reorder(t, 1)}
+          />
+        ))
       ) : (
         <Card>
           <p>この日の予定はありません。設定や週間画面から確認できます。</p>
         </Card>
       )}
       <h2>追加・短時間</h2>
-      {tasks
-        .filter((t) => t.priority !== "required")
-        .map((t) => (
-          <TaskRow key={t.id} t={t} status={status} d={d} upd={upd} />
+      {!focusMode &&
+        optionalTasks.map((t) => (
+          <TaskRow
+            key={t.id}
+            t={t}
+            status={status}
+            d={d}
+            upd={upd}
+            onUp={() => reorder(t, -1)}
+            onDown={() => reorder(t, 1)}
+          />
         ))}
       <a className="button secondary" href={eigo} target="_blank">
         英検アプリを開く ↗
@@ -765,14 +1008,35 @@ function TaskRow({
   status,
   d,
   upd,
+  onUp,
+  onDown,
 }: {
   t: Task;
   status: (t: Task, s: Task["status"]) => void;
   d: Data;
   upd: (d: Data) => void;
+  onUp?: () => void;
+  onDown?: () => void;
 }) {
   const [partialOpen, setPartialOpen] = useState(false);
   const [partialAmount, setPartialAmount] = useState(t.completedAmount || 0);
+  const [seconds, setSeconds] = useState(0);
+  const [running, setRunning] = useState(false);
+  useEffect(() => {
+    if (!running) return;
+    const timer = setInterval(() => setSeconds((value) => value + 1), 1000);
+    return () => clearInterval(timer);
+  }, [running]);
+  const saveTime = () => {
+    const actualMinutes = Math.max(1, Math.ceil(seconds / 60));
+    upd({
+      ...d,
+      tasks: d.tasks.map((item) =>
+        item.id === t.id ? { ...item, actualMinutes } : item,
+      ),
+    });
+    setRunning(false);
+  };
   const savePartial = () => {
     upd({
       ...d,
@@ -799,7 +1063,9 @@ function TaskRow({
           <span className={"subject " + t.subject}>{t.subject}</span>
           <h3>{t.title}</h3>
           <p>
-            {t.estimatedMinutes}分 ・ {t.availableLocations[0]}
+            予定 {t.estimatedMinutes}分
+            {t.actualMinutes > 0 && ` → 実際 ${t.actualMinutes}分`} ・{" "}
+            {t.availableLocations[0]}
           </p>
           {t.totalAmount && (
             <progress value={t.completedAmount || 0} max={t.totalAmount} />
@@ -840,9 +1106,31 @@ function TaskRow({
       <details className="moreActions">
         <summary>編集・日付変更・削除</summary>
         <div className="taskTools">
+          <div className="orderButtons">
+            <button type="button" onClick={onUp}>
+              ↑ 上へ
+            </button>
+            <button type="button" onClick={onDown}>
+              ↓ 下へ
+            </button>
+          </div>
           <EditTask task={t} d={d} upd={upd} />
           <MoveTask task={t} d={d} upd={upd} />
           <DeleteTask task={t} d={d} upd={upd} />
+        </div>
+        <div className="timerPanel">
+          <b>
+            ⏱ {String(Math.floor(seconds / 60)).padStart(2, "0")}:
+            {String(seconds % 60).padStart(2, "0")}
+          </b>
+          <button type="button" onClick={() => setRunning(!running)}>
+            {running ? "一時停止" : "スタート"}
+          </button>
+          {seconds > 0 && (
+            <button className="primary" type="button" onClick={saveTime}>
+              時間を記録
+            </button>
+          )}
         </div>
       </details>
     </Card>
@@ -974,30 +1262,30 @@ function Calendar({ d }: { d: Data }) {
   );
 }
 function Homework({ d }: { d: Data }) {
-  const grouped = d.tasks
-    .filter((t) => t.category === "夏休み宿題")
-    .reduce<Record<string, Task[]>>((g, t) => {
-      (g[t.subject] ??= []).push(t);
-      return g;
-    }, {});
+  const materials = aggregateMaterials(
+    d.tasks.filter((task) => task.category === "夏休み宿題"),
+  );
   return (
     <>
-      <Title t="宿題一覧" sub="教科ごとの進み具合" />
-      {Object.entries(grouped).map(([s, a]) => {
-        const n = a.filter((t) => t.status === "completed").length;
-        return (
-          <Card key={s}>
-            <div className="between">
-              <h3>{s}</h3>
-              <b>{pct(n, a.length)}%</b>
+      <Title t="宿題一覧" sub="教材ごとの累計進捗" />
+      {materials.map((material) => (
+        <Card key={`${material.subject}-${material.title}`}>
+          <div className="between">
+            <div>
+              <span className={`subject ${material.subject}`}>
+                {material.subject}
+              </span>
+              <h3>{material.title}</h3>
             </div>
-            <progress value={n} max={a.length} />
-            <p>
-              {n} / {a.length}工程　目標 7月31日
-            </p>
-          </Card>
-        );
-      })}
+            <b>{pct(material.completed, material.total)}%</b>
+          </div>
+          <progress value={material.completed} max={material.total} />
+          <p>
+            {material.completed} / {material.total}
+            {material.unit}　目標 7月31日
+          </p>
+        </Card>
+      ))}
     </>
   );
 }
@@ -1316,6 +1604,11 @@ function Settings({ d, upd }: { d: Data; upd: (d: Data) => void }) {
         >
           データを初期化
         </button>
+      </Card>
+      <Card>
+        <h3>🗑 最近削除した予定</h3>
+        <p>間違えて削除したタスクを戻せます。</p>
+        <TrashRestore d={d} upd={upd} />
       </Card>
     </>
   );
