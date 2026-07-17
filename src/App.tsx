@@ -8,7 +8,7 @@ import {
 } from "react-router-dom";
 import type { Data, Task } from "./types";
 import { initialData } from "./data";
-import { load, pct, phase, reset, save } from "./store";
+import { load, migrate, pct, phase, reset, save } from "./store";
 import {
   aggregateMaterials,
   deadlineForecast,
@@ -75,7 +75,11 @@ export default function App() {
     <div
       className={`app ${simpleMode ? "simpleMode" : "detailMode"} ${largeText ? "largeText" : ""}`}
     >
-      {toast && <div className="successToast">{toast}</div>}
+      {toast && (
+        <div className="successToast" role="status" aria-live="polite">
+          {toast}
+        </div>
+      )}
       <UpdateBanner />
       <header>
         <span className="logo">なつまなび</span>
@@ -106,7 +110,7 @@ export default function App() {
           >
             文字{largeText ? "大" : "標準"}
           </button>
-          <span className="badge">v1.6</span>
+          <span className="badge">v1.7</span>
         </div>
       </header>
       <main>
@@ -171,7 +175,7 @@ function QuickGuide({ onClose }: { onClose: () => void }) {
     onClose();
   };
   return (
-    <div className="modal">
+    <div className="modal" role="dialog" aria-modal="true" aria-label="使い方">
       <div className="guideCard">
         <span className="eyebrow">30秒でわかる使い方</span>
         <div className="guideIcon">{["📋", "✅", "📅"][step]}</div>
@@ -189,7 +193,9 @@ function QuickGuide({ onClose }: { onClose: () => void }) {
         >
           {step < 2 ? "次へ →" : "わかった！はじめる"}
         </button>
-        <button className="guideSkip" type="button" onClick={finish}>あとで見る</button>
+        <button className="guideSkip" type="button" onClick={finish}>
+          あとで見る
+        </button>
       </div>
     </div>
   );
@@ -324,7 +330,7 @@ function DeleteTask({
     return (
       <div className="deleteConfirm">
         <b>この予定を削除する？</b>
-        <span>削除すると元に戻せません</span>
+        <span>削除後も「設定」から復元できます</span>
         <div>
           <button className="confirmDelete" type="button" onClick={remove}>
             削除する
@@ -985,10 +991,15 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
         },
       ],
     });
+    notify(`${title}を追加しました ✓`);
   };
   return (
     <>
-      {success && <div className="successToast">🎉 {success}</div>}
+      {success && (
+        <div className="successToast" role="status" aria-live="polite">
+          🎉 {success}
+        </div>
+      )}
       <div className="hero">
         <div>
           <span>{phase(date)}期間</span>
@@ -1179,7 +1190,7 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
         ))
       ) : (
         <Card>
-          <p>この日の予定はありません。設定や週間画面から確認できます。</p>
+          <p>この日の必須予定はありません。「この日に予定を追加」から作れます。</p>
         </Card>
       )}
       <h2>追加・短時間</h2>
@@ -1251,6 +1262,8 @@ function TaskRow({
       <div className="task">
         <button
           className="check"
+          type="button"
+          aria-label={`${t.title}を${t.status === "completed" ? "未完了に戻す" : "完了にする"}`}
           onClick={() =>
             status(t, t.status === "completed" ? "pending" : "completed")
           }
@@ -1275,11 +1288,13 @@ function TaskRow({
       <div className="actions">
         <button
           className="completeAction"
+          type="button"
           onClick={() => status(t, "completed")}
         >
           ✅ できた
         </button>
         <button
+          type="button"
           onClick={() =>
             t.totalAmount ? setPartialOpen(!partialOpen) : status(t, "partial")
           }
@@ -1353,10 +1368,27 @@ function Week({ d, upd }: { d: Data; upd: (d: Data) => void }) {
     <>
       <Title t="週間予定" sub="1週間の負担を見渡そう" />
       <input
+        aria-label="週の開始日"
         type="date"
         value={start}
         onChange={(e) => setStart(e.target.value)}
       />
+      <div className="weekNav">
+        <button type="button" onClick={() => setStart(addDays(start, -7))}>
+          ← 前の週
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            setStart(today() < d.settings.studyStartDate ? d.settings.studyStartDate : today())
+          }
+        >
+          今週
+        </button>
+        <button type="button" onClick={() => setStart(addDays(start, 7))}>
+          次の週 →
+        </button>
+      </div>
       {ds.map((x) => {
         const ts = d.tasks.filter((t) => t.date === x);
         const es = d.events.filter((e) => e.date === x);
@@ -1413,6 +1445,7 @@ function Calendar({ d }: { d: Data }) {
     x.setDate(x.getDate() + i);
     return x.toLocaleDateString("sv-SE");
   });
+  const months = ["2026-07", "2026-08", "2026-09"];
   return (
     <>
       <Title
@@ -1424,40 +1457,61 @@ function Calendar({ d }: { d: Data }) {
         <span>🟦 英検</span>
         <span>🟪 テスト</span>
       </div>
-      <div className="calendar">
-        {dates.map((x) => {
-          const classEvent = d.events.find(
-            (event) => event.type === "class" && event.date === x,
-          );
-          return (
-            <button
-              type="button"
-              aria-label={`${x}の学習画面を開く`}
-              className={`day ${d.settings.accommodationDates.includes(x) ? "stay" : ""}`}
-              key={x}
-              onClick={() => navigate(`/?date=${x}`)}
-            >
-              <b>{Number(x.slice(-2))}</b>
-              <small>{x.slice(5, 7)}月</small>
-              <i>
-                {x === "2026-07-31"
-                  ? "🏁宿題"
-                  : x === "2026-08-31"
-                    ? "🏫終了"
-                    : d.settings.periodicTestDates.includes(x)
-                      ? "📝テスト"
-                      : x === "2026-09-25"
-                        ? "E 英検"
-                        : classEvent
-                          ? "🏫17:30"
-                          : d.settings.accommodationDates.includes(x)
-                            ? "🧳宿泊"
-                            : ""}
-              </i>
-            </button>
-          );
-        })}
-      </div>
+      {months.map((month) => {
+        const monthDates = dates.filter((date) => date.startsWith(month));
+        const leading = new Date(`${monthDates[0]}T00:00:00`).getDay();
+        return (
+          <section className="calendarMonth" key={month}>
+            <h2>{Number(month.slice(5))}月</h2>
+            <div className="weekdayRow" aria-hidden="true">
+              {["日", "月", "火", "水", "木", "金", "土"].map((day) => (
+                <span key={day}>{day}</span>
+              ))}
+            </div>
+            <div className="calendar">
+              {Array.from({ length: leading }, (_, index) => (
+                <span className="calendarBlank" key={`blank-${index}`} />
+              ))}
+              {monthDates.map((x) => {
+                const classEvent = d.events.find(
+                  (event) => event.type === "class" && event.date === x,
+                );
+                return (
+                  <button
+                    type="button"
+                    aria-label={`${dateLabel(x)}の学習画面を開く`}
+                    className={`day ${d.settings.accommodationDates.includes(x) ? "stay" : ""}`}
+                    key={x}
+                    onClick={() => navigate(`/?date=${x}`)}
+                  >
+                    <b>{Number(x.slice(-2))}</b>
+                    <small>
+                      {new Intl.DateTimeFormat("ja-JP", {
+                        weekday: "short",
+                      }).format(new Date(`${x}T00:00:00`))}
+                    </small>
+                    <i>
+                      {x === "2026-07-31"
+                        ? "🏁宿題"
+                        : x === "2026-08-31"
+                          ? "🏫終了"
+                          : d.settings.periodicTestDates.includes(x)
+                            ? "📝テスト"
+                            : x === "2026-09-25"
+                              ? "E 英検"
+                              : classEvent
+                                ? "🏫17:30"
+                                : d.settings.accommodationDates.includes(x)
+                                  ? "🧳宿泊"
+                                  : ""}
+                    </i>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
     </>
   );
 }
@@ -1582,10 +1636,12 @@ function Eiken({ d, upd }: { d: Data; upd: (d: Data) => void }) {
           placeholder="ここに貼り付け"
         />
         <div className="actions">
-          <button className="primary" onClick={() => parse(text)}>
+          <button className="primary" type="button" onClick={() => parse(text)}>
             内容を確認して取り込む
           </button>
-          <button onClick={() => file.current?.click()}>JSONファイル</button>
+          <button type="button" onClick={() => file.current?.click()}>
+            JSONファイル
+          </button>
         </div>
         <input
           hidden
@@ -1667,7 +1723,7 @@ function Settings({ d, upd }: { d: Data; upd: (d: Data) => void }) {
     const b = new Blob(
         [
           JSON.stringify(
-            { ...d, appVersion: 1, exportedAt: new Date().toISOString() },
+            { ...d, appVersion: 2, exportedAt: new Date().toISOString() },
             null,
             2,
           ),
@@ -1675,10 +1731,13 @@ function Settings({ d, upd }: { d: Data; upd: (d: Data) => void }) {
         { type: "application/json" },
       ),
       a = document.createElement("a");
-    a.href = URL.createObjectURL(b);
+    const url = URL.createObjectURL(b);
+    a.href = url;
     a.download = `なつまなび-backup-${today()}.json`;
     a.click();
+    URL.revokeObjectURL(url);
     localStorage.setItem("natsumanabi-last-backup", String(Date.now()));
+    notify("バックアップを保存しました ✓");
   }
   return (
     <>
@@ -1747,7 +1806,9 @@ function Settings({ d, upd }: { d: Data; upd: (d: Data) => void }) {
         <p>
           ブラウザのサイトデータを削除すると記録も消えます。定期的に保存してください。
         </p>
-        <button onClick={backup}>JSONを書き出す</button>
+        <button type="button" onClick={backup}>
+          JSONを書き出す
+        </button>
         <label className="button secondary">
           JSONから復元
           <input
@@ -1757,13 +1818,10 @@ function Settings({ d, upd }: { d: Data; upd: (d: Data) => void }) {
             onChange={async (e) => {
               try {
                 const x = JSON.parse(await e.target.files![0].text());
-                if (confirm("現在のデータをバックアップ内容で置き換えますか？"))
-                  upd({
-                    settings: x.settings,
-                    tasks: x.tasks,
-                    events: x.events || [],
-                    importHistory: x.importHistory || [],
-                  });
+                if (confirm("現在のデータをバックアップ内容で置き換えますか？")) {
+                  upd(migrate(x));
+                  notify("バックアップから復元しました ✓");
+                }
               } catch {
                 alert("復元できませんでした");
               }
@@ -1772,6 +1830,7 @@ function Settings({ d, upd }: { d: Data; upd: (d: Data) => void }) {
         </label>
         <button
           className="danger"
+          type="button"
           onClick={() => {
             if (
               confirm("全記録を初期化します。元に戻せません。よろしいですか？")
