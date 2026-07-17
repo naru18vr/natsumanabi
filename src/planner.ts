@@ -42,6 +42,16 @@ export function rebalanceDay(tasks: Task[], date: string, limit: number) {
   );
 }
 
+export function suggestedMoves(tasks: Task[], date: string, limit: number) {
+  const balanced = rebalanceDay(tasks, date, limit);
+  const moved = new Set(
+    balanced
+      .filter((task) => task.date !== date)
+      .map((task) => task.id),
+  );
+  return tasks.filter((task) => task.date === date && moved.has(task.id));
+}
+
 export function deadlineForecast(tasks: Task[], today: string) {
   const pending = tasks.filter(
     (task) =>
