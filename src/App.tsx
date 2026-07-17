@@ -310,6 +310,7 @@ function Week({ d, upd }: { d: Data; upd: (d: Data) => void }) {
 }
 function Calendar({ d, upd }: { d: Data; upd: (d: Data) => void }) {
   const [selected, setSelected] = useState("2026-07-21");
+  const [detailOpen, setDetailOpen] = useState(false);
   const dates = Array.from({ length: 67 }, (_, i) => {
     const x = new Date("2026-07-21T00:00:00");
     x.setDate(x.getDate() + i);
@@ -345,7 +346,10 @@ function Calendar({ d, upd }: { d: Data; upd: (d: Data) => void }) {
               aria-pressed={selected === x}
               className={`day ${d.settings.accommodationDates.includes(x) ? "stay" : ""} ${selected === x ? "selected" : ""}`}
               key={x}
-              onClick={() => setSelected(x)}
+              onClick={() => {
+                setSelected(x);
+                setDetailOpen(true);
+              }}
             >
               <b>{Number(x.slice(-2))}</b>
               <small>{x.slice(5, 7)}月</small>
@@ -368,34 +372,46 @@ function Calendar({ d, upd }: { d: Data; upd: (d: Data) => void }) {
           );
         })}
       </div>
-      <Card className="calendarDetail">
-        <span className="eyebrow">選択した日の予定</span>
-        <h2>{selectedLabel}</h2>
-        {selectedEvents.map((event) => (
-          <p key={event.id}>
-            {event.type === "class" ? "🏫" : "📝"}{" "}
-            {event.startTime && `${event.startTime}〜${event.endTime}　`}
-            <b>{event.title}</b>
-          </p>
-        ))}
-        {selectedTasks.map((task) => (
-          <div className="calendarTask" key={task.id}>
-            <p>
-              {task.status === "completed" ? "✅" : "□"} {task.subject}　
-              <b>{task.title}</b>（{task.estimatedMinutes}分）
-            </p>
-            <MoveTask task={task} d={d} upd={upd} />
+      {detailOpen && (
+        <Card className="calendarDetail">
+          <div className="between">
+            <span className="eyebrow">選択した日の予定</span>
+            <button
+              className="detailClose"
+              type="button"
+              aria-label="予定詳細を閉じる"
+              onClick={() => setDetailOpen(false)}
+            >
+              閉じる ×
+            </button>
           </div>
-        ))}
-        {selected === "2026-07-31" && <p>🏁 夏休み宿題の家庭内完了期限</p>}
-        {selected === "2026-08-31" && <p>🏫 夏休み終了日</p>}
-        {!selectedTasks.length &&
-          !selectedEvents.length &&
-          selected !== "2026-07-31" &&
-          selected !== "2026-08-31" && (
-            <p className="muted">この日の予定はありません。</p>
-          )}
-      </Card>
+          <h2>{selectedLabel}</h2>
+          {selectedEvents.map((event) => (
+            <p key={event.id}>
+              {event.type === "class" ? "🏫" : "📝"}{" "}
+              {event.startTime && `${event.startTime}〜${event.endTime}　`}
+              <b>{event.title}</b>
+            </p>
+          ))}
+          {selectedTasks.map((task) => (
+            <div className="calendarTask" key={task.id}>
+              <p>
+                {task.status === "completed" ? "✅" : "□"} {task.subject}　
+                <b>{task.title}</b>（{task.estimatedMinutes}分）
+              </p>
+              <MoveTask task={task} d={d} upd={upd} />
+            </div>
+          ))}
+          {selected === "2026-07-31" && <p>🏁 夏休み宿題の家庭内完了期限</p>}
+          {selected === "2026-08-31" && <p>🏫 夏休み終了日</p>}
+          {!selectedTasks.length &&
+            !selectedEvents.length &&
+            selected !== "2026-07-31" &&
+            selected !== "2026-08-31" && (
+              <p className="muted">この日の予定はありません。</p>
+            )}
+        </Card>
+      )}
     </>
   );
 }
