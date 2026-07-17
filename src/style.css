@@ -353,6 +353,9 @@ progress::-webkit-progress-value {
   padding: 7px 11px;
   font-size: 12px;
 }
+.card > .moveTask {
+  margin-top: 8px;
+}
 .movePicker {
   display: grid;
   gap: 8px;
