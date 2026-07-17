@@ -15,6 +15,7 @@ import {
   overdueTasks,
   rebalanceDay,
   reviewCopies,
+  suggestedMoves,
 } from "./planner";
 const eigo = "https://naru18vr.github.io/eigo/";
 const today = () =>
@@ -59,6 +60,7 @@ export default function App() {
   const [guideOpen, setGuideOpen] = useState(
     () => localStorage.getItem("natsumanabi-guide") !== "done",
   );
+  const [undoData, setUndoData] = useState<Data | null>(null);
   useEffect(() => {
     const handler = (event: Event) => {
       setToast((event as CustomEvent<string>).detail);
@@ -68,6 +70,7 @@ export default function App() {
     return () => window.removeEventListener("natsumanabi-notify", handler);
   }, []);
   const upd = (x: Data) => {
+    setUndoData(d);
     setD(x);
     save(x);
   };
@@ -110,7 +113,7 @@ export default function App() {
           >
             文字{largeText ? "大" : "標準"}
           </button>
-          <span className="badge">v1.7</span>
+          <span className="badge">v1.8</span>
         </div>
       </header>
       <main>
@@ -139,6 +142,25 @@ export default function App() {
           </NavLink>
         ))}
       </nav>
+      {undoData && (
+        <div className="globalUndo" role="status">
+          <span>変更しました</span>
+          <button
+            type="button"
+            onClick={() => {
+              setD(undoData);
+              save(undoData);
+              setUndoData(null);
+              notify("元に戻しました ✓");
+            }}
+          >
+            ↶ 元に戻す
+          </button>
+          <button type="button" aria-label="閉じる" onClick={() => setUndoData(null)}>
+            ×
+          </button>
+        </div>
+      )}
       {!d.settings.setupDone && <Setup d={d} upd={upd} />}
       {d.settings.setupDone && guideOpen && (
         <QuickGuide onClose={() => setGuideOpen(false)} />
@@ -290,15 +312,14 @@ function DeleteTask({
   upd: (d: Data) => void;
 }) {
   const [confirming, setConfirming] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const remove = () => {
-    setPendingDelete(true);
     setConfirming(false);
-    timer.current = setTimeout(() => {
-      const trash = JSON.parse(
-        localStorage.getItem("natsumanabi-trash") || "[]",
-      );
+    let trash: { task: Task; deletedAt: string }[] = [];
+    try {
+      trash = JSON.parse(localStorage.getItem("natsumanabi-trash") || "[]");
+    } catch {
+      trash = [];
+    }
       localStorage.setItem(
         "natsumanabi-trash",
         JSON.stringify(
@@ -309,23 +330,8 @@ function DeleteTask({
         ),
       );
       upd({ ...d, tasks: d.tasks.filter((item) => item.id !== task.id) });
-      notify("削除しました");
-    }, 5000);
+      notify("削除しました。下のボタンで元に戻せます");
   };
-  const undo = () => {
-    if (timer.current) clearTimeout(timer.current);
-    setPendingDelete(false);
-    notify("元に戻しました ✓");
-  };
-  if (pendingDelete)
-    return (
-      <div className="undoDelete">
-        <span>削除しました</span>
-        <button type="button" onClick={undo}>
-          元に戻す
-        </button>
-      </div>
-    );
   if (confirming)
     return (
       <div className="deleteConfirm">
@@ -484,6 +490,9 @@ function AddTask({
   const [subject, setSubject] = useState("その他");
   const [minutes, setMinutes] = useState(15);
   const [priority, setPriority] = useState<Task["priority"]>("required");
+  const [quickSubject, setQuickSubject] = useState("数学");
+  const [quickTitle, setQuickTitle] = useState("");
+  const [quickMinutes, setQuickMinutes] = useState(15);
   const draftKey = `natsumanabi-draft-${date}`;
   const loadDraft = () => {
     try {
@@ -563,6 +572,35 @@ function AddTask({
     localStorage.removeItem(draftKey);
     setOpen(false);
   };
+  const quickAddNow = () => {
+    if (!quickTitle.trim()) return;
+    const base = initialData().tasks[0];
+    const task: Task = {
+      ...base,
+      id: `quick-${Date.now()}-${crypto.randomUUID()}`,
+      source: "quick-add",
+      subject: quickSubject,
+      category: "追加予定",
+      type: "custom",
+      title: quickTitle.trim(),
+      description: "すぐ追加した予定",
+      date,
+      estimatedMinutes: quickMinutes,
+      actualMinutes: 0,
+      priority: "required",
+      status: "pending",
+      totalAmount: undefined,
+      completedAmount: 0,
+      unit: undefined,
+      requiredTools: [],
+      availableLocations: ["どこでも実施可能"],
+      tags: [quickSubject],
+      rescheduleHistory: [],
+    };
+    upd({ ...d, tasks: [...d.tasks, task] });
+    setQuickTitle("");
+    notify(`${quickTitle.trim()}を追加しました ✓`);
+  };
   const previewBase =
     taskName === "その他（自由入力）"
       ? customName.trim() || "タスク名"
@@ -578,6 +616,43 @@ function AddTask({
   };
   return (
     <Card className="addTaskCard">
+      <details className="quickAdd">
+        <summary>⚡ すぐ追加（教科・名前・時間だけ）</summary>
+        <div>
+          <select
+            aria-label="教科"
+            value={quickSubject}
+            onChange={(event) => setQuickSubject(event.target.value)}
+          >
+            {["国語", "数学", "英語", "理科", "社会", "その他"].map(
+              (item) => <option key={item}>{item}</option>,
+            )}
+          </select>
+          <input
+            aria-label="予定の名前"
+            value={quickTitle}
+            onChange={(event) => setQuickTitle(event.target.value)}
+            placeholder="例：数学プリント"
+          />
+          <select
+            aria-label="予定時間"
+            value={quickMinutes}
+            onChange={(event) => setQuickMinutes(Number(event.target.value))}
+          >
+            {[10, 15, 20, 30, 45, 60].map((value) => (
+              <option value={value} key={value}>{value}分</option>
+            ))}
+          </select>
+          <button
+            className="primary"
+            type="button"
+            disabled={!quickTitle.trim()}
+            onClick={quickAddNow}
+          >
+            ＋ 追加
+          </button>
+        </div>
+      </details>
       <button
         className="addTaskButton"
         type="button"
@@ -886,6 +961,11 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
   const forecasts = deadlineForecast(d.tasks, date);
   const requiredTasks = tasks.filter((task) => task.priority === "required");
   const optionalTasks = tasks.filter((task) => task.priority !== "required");
+  const moveSuggestions = suggestedMoves(
+    d.tasks,
+    date,
+    d.settings.dailyLimitMinutes,
+  );
   const displayedRequired = focusMode
     ? requiredTasks.filter((task) => task.status !== "completed").slice(0, 1)
     : requiredTasks;
@@ -923,8 +1003,15 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
       ),
     });
     if (s === "completed") {
-      setSuccess(`できた！ 今日${done.length + 1}つ目 🎉`);
-      setTimeout(() => setSuccess(""), 2200);
+      const next = requiredTasks.find(
+        (task) => task.id !== t.id && task.status !== "completed",
+      );
+      setSuccess(
+        next
+          ? `できた！ 次は「${next.title}」`
+          : "できた！ 今日の必須は全部おわり 🎉",
+      );
+      setTimeout(() => setSuccess(""), 3200);
     }
   }
   const changeDate = (days: number) => {
@@ -1127,6 +1214,14 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
           <p>
             {mins}分の予定を、上限{d.settings.dailyLimitMinutes}分に近づけます。
           </p>
+          {moveSuggestions.length > 0 && (
+            <div className="moveSuggestion">
+              <b>明日へ移す候補</b>
+              {moveSuggestions.map((task) => (
+                <span key={task.id}>・{task.title}（{task.estimatedMinutes}分）</span>
+              ))}
+            </div>
+          )}
           <button
             className="primary wide"
             type="button"
@@ -1516,12 +1611,69 @@ function Calendar({ d }: { d: Data }) {
   );
 }
 function Homework({ d }: { d: Data }) {
+  const [query, setQuery] = useState("");
+  const [subjectFilter, setSubjectFilter] = useState("すべて");
+  const [statusFilter, setStatusFilter] = useState("未完了");
   const materials = aggregateMaterials(
     d.tasks.filter((task) => task.category === "夏休み宿題"),
   );
+  const foundTasks = d.tasks.filter((task) => {
+    const matchesQuery = `${task.subject} ${task.title}`
+      .toLowerCase()
+      .includes(query.trim().toLowerCase());
+    const matchesSubject =
+      subjectFilter === "すべて" || task.subject === subjectFilter;
+    const matchesStatus =
+      statusFilter === "すべて" ||
+      (statusFilter === "完了" && task.status === "completed") ||
+      (statusFilter === "未完了" && task.status !== "completed");
+    return matchesQuery && matchesSubject && matchesStatus;
+  });
   return (
     <>
       <Title t="宿題一覧" sub="教材ごとの累計進捗" />
+      <Card className="taskSearch">
+        <h3>🔎 予定を探す</h3>
+        <input
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="名前を入力（例：プリント）"
+          aria-label="予定名で検索"
+        />
+        <div>
+          <select
+            aria-label="教科で絞り込み"
+            value={subjectFilter}
+            onChange={(event) => setSubjectFilter(event.target.value)}
+          >
+            <option>すべて</option>
+            {[...new Set(d.tasks.map((task) => task.subject))].map((subject) => (
+              <option key={subject}>{subject}</option>
+            ))}
+          </select>
+          <select
+            aria-label="完了状態で絞り込み"
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+          >
+            <option>未完了</option>
+            <option>完了</option>
+            <option>すべて</option>
+          </select>
+        </div>
+        <small>{foundTasks.length}件見つかりました</small>
+        <div className="searchResults">
+          {foundTasks.slice(0, 20).map((task) => (
+            <NavLink key={task.id} to={`/?date=${task.date}`}>
+              <span>{subjectIcon(task.subject)} {task.title}</span>
+              <small>{dateLabel(task.date)}・{task.estimatedMinutes}分</small>
+            </NavLink>
+          ))}
+          {!foundTasks.length && <p className="muted">当てはまる予定はありません。</p>}
+        </div>
+      </Card>
+      <h2>教材ごとの進み具合</h2>
       {materials.map((material) => (
         <Card key={`${material.subject}-${material.title}`}>
           <div className="between">
@@ -1717,6 +1869,7 @@ function Report({ d }: { d: Data }) {
 }
 function Settings({ d, upd }: { d: Data; upd: (d: Data) => void }) {
   const s = d.settings;
+  const [restoreCandidate, setRestoreCandidate] = useState<Data | null>(null);
   const set = (k: keyof typeof s, v: any) =>
     upd({ ...d, settings: { ...s, [k]: v } });
   function backup() {
@@ -1817,17 +1970,40 @@ function Settings({ d, upd }: { d: Data; upd: (d: Data) => void }) {
             accept=".json"
             onChange={async (e) => {
               try {
-                const x = JSON.parse(await e.target.files![0].text());
-                if (confirm("現在のデータをバックアップ内容で置き換えますか？")) {
-                  upd(migrate(x));
-                  notify("バックアップから復元しました ✓");
-                }
+                const file = e.target.files?.[0];
+                if (!file) return;
+                setRestoreCandidate(migrate(JSON.parse(await file.text())));
+                e.target.value = "";
               } catch {
                 alert("復元できませんでした");
               }
             }}
           />
         </label>
+        {restoreCandidate && (
+          <div className="restorePreview" role="dialog" aria-label="復元内容の確認">
+            <b>この内容に置き換えますか？</b>
+            <span>予定：{restoreCandidate.tasks.length}件</span>
+            <span>行事：{restoreCandidate.events.length}件</span>
+            <small>現在の記録は置き換わります。先に書き出すと安心です。</small>
+            <div className="actions">
+              <button
+                className="primary"
+                type="button"
+                onClick={() => {
+                  upd(restoreCandidate);
+                  setRestoreCandidate(null);
+                  notify("バックアップから復元しました ✓");
+                }}
+              >
+                復元する
+              </button>
+              <button type="button" onClick={() => setRestoreCandidate(null)}>
+                やめる
+              </button>
+            </div>
+          </div>
+        )}
         <button
           className="danger"
           type="button"
