@@ -1533,28 +1533,7 @@ function Settings({ d, upd }: { d: Data; upd: (d: Data) => void }) {
       </Card>
       <Card>
         <h3>夏期講習</h3>
-        <button
-          onClick={() => {
-            const date = prompt("日付 YYYY-MM-DD", "2026-08-06"),
-              title = prompt("講座名", "夏期講習");
-            if (date && title)
-              upd({
-                ...d,
-                events: [
-                  ...d.events,
-                  {
-                    id: crypto.randomUUID(),
-                    type: "class",
-                    date,
-                    title,
-                    travelMinutes: 0,
-                  },
-                ],
-              });
-          }}
-        >
-          講習を追加
-        </button>
+        <p>登録済みの夏期講習予定です。</p>
         {d.events
           .filter((e) => e.type === "class")
           .map((e) => (
