@@ -132,17 +132,30 @@ function DeleteTask({
   d: Data;
   upd: (d: Data) => void;
 }) {
-  const remove = () => {
-    if (
-      !confirm(
-        `「${task.title}」を${task.date}の予定から削除しますか？\nこの操作は元に戻せません。`,
-      )
-    )
-      return;
+  const [confirming, setConfirming] = useState(false);
+  const remove = () =>
     upd({ ...d, tasks: d.tasks.filter((item) => item.id !== task.id) });
-  };
+  if (confirming)
+    return (
+      <div className="deleteConfirm">
+        <b>この予定を削除する？</b>
+        <span>削除すると元に戻せません</span>
+        <div>
+          <button className="confirmDelete" type="button" onClick={remove}>
+            削除する
+          </button>
+          <button type="button" onClick={() => setConfirming(false)}>
+            やめる
+          </button>
+        </div>
+      </div>
+    );
   return (
-    <button className="deleteTask" type="button" onClick={remove}>
+    <button
+      className="deleteTask"
+      type="button"
+      onClick={() => setConfirming(true)}
+    >
       🗑 削除
     </button>
   );
