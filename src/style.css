@@ -408,6 +408,136 @@ progress::-webkit-progress-value {
   border-color: #a42b2b;
   background: #a42b2b;
 }
+.undoDelete {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  color: #fff;
+  background: #374944;
+}
+.undoDelete button {
+  min-height: 36px;
+  margin-left: auto;
+  color: #126b5b;
+}
+.editTask > button,
+.moveTask > button {
+  min-height: 40px;
+  padding: 7px 11px;
+  font-size: 12px;
+}
+.editPanel {
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  background: #edf5f1;
+}
+.partialPanel {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #fff7e5;
+}
+.partialPanel > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.partialPanel input {
+  width: 90px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid #cfc6ad;
+  border-radius: 9px;
+}
+.successToast {
+  position: fixed;
+  z-index: 40;
+  top: 70px;
+  left: 50%;
+  width: min(90%, 430px);
+  padding: 15px;
+  transform: translateX(-50%);
+  border-radius: 16px;
+  color: #fff;
+  background: #126b5b;
+  box-shadow: 0 12px 35px #173c3444;
+  text-align: center;
+  font-weight: 800;
+  animation: popIn 0.3s ease-out;
+}
+@keyframes popIn {
+  from {
+    transform: translateX(-50%) scale(0.85);
+    opacity: 0;
+  }
+}
+.dateNav {
+  display: grid;
+  grid-template-columns: 1fr 0.8fr 1fr;
+  gap: 7px;
+  margin: 8px 0 14px;
+}
+.dateNav button {
+  padding: 7px;
+  font-size: 12px;
+}
+.loadNotice,
+.backupNotice {
+  display: block;
+  margin: 10px 0;
+  padding: 13px;
+  border-radius: 13px;
+  color: #493b26;
+  background: #fff1d5;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+}
+.backupNotice {
+  color: #244c42;
+  background: #e4f2ec;
+}
+.dayToggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 2px;
+  border: 0;
+  text-align: left;
+}
+.dayToggle span {
+  display: grid;
+  gap: 4px;
+}
+.dayToggle small {
+  color: #71807b;
+  font-weight: 400;
+}
+.dayContents {
+  margin-top: 8px;
+  border-top: 1px solid #e5e9e6;
+  padding-top: 6px;
+}
+.moreActions {
+  margin-top: 10px;
+}
+.moreActions summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: #65726d;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
 .movePicker {
   display: grid;
   gap: 8px;
