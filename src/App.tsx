@@ -180,6 +180,12 @@ function AddTask({
     setMinutes(15);
     setOpen(false);
   };
+  const previewBase =
+    taskName === "その他（自由入力）"
+      ? customName.trim() || "タスク名"
+      : taskName;
+  const previewRange = range === "その他の範囲" ? customRange.trim() : range;
+  const previewTitle = `${previewBase}${previewRange && previewRange !== "指定なし" ? `：${previewRange}` : ""}${contents.length ? `（${contents.join("・")}）` : ""}`;
   return (
     <Card className="addTaskCard">
       <button
@@ -191,8 +197,11 @@ function AddTask({
       </button>
       {open && (
         <div className="addTaskForm">
-          <p className="notice">{date} に追加します</p>
-          <Label t="タスク名">
+          <div className="addGuide">
+            <b>かんたん予定追加</b>
+            <span>{date} に追加</span>
+          </div>
+          <Label t="① なにをする？">
             <select
               value={taskName}
               onChange={(e) => setTaskName(e.target.value)}
@@ -233,7 +242,7 @@ function AddTask({
               />
             </Label>
           )}
-          <Label t="ページ・範囲（1つ選択）">
+          <Label t="② どこまでやる？">
             <select value={range} onChange={(e) => setRange(e.target.value)}>
               <option>指定なし</option>
               <option>1ページ</option>
@@ -263,7 +272,7 @@ function AddTask({
             </Label>
           )}
           <fieldset className="contentChecks">
-            <legend>取り組む内容（複数選択可）</legend>
+            <legend>③ やることをタップ（いくつでもOK）</legend>
             {[
               "問題を解く",
               "丸付け",
@@ -294,7 +303,7 @@ function AddTask({
               </label>
             ))}
           </fieldset>
-          <Label t="科目">
+          <Label t="④ 科目は？">
             <select
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
@@ -316,24 +325,62 @@ function AddTask({
               ))}
             </select>
           </Label>
-          <Label t="予定時間（分）">
-            <input
-              type="number"
-              min="1"
-              max="300"
-              value={minutes}
-              onChange={(e) => setMinutes(Number(e.target.value))}
-            />
-          </Label>
-          <Label t="区分">
-            <select
-              value={priority}
-              onChange={(e) => setPriority(e.target.value as Task["priority"])}
-            >
-              <option value="required">今日の必須</option>
-              <option value="normal">追加・短時間</option>
-            </select>
-          </Label>
+          <div className="choiceSection">
+            <b>⑤ 何分くらい？</b>
+            <div className="quickChoices">
+              {[10, 15, 30, 45, 60].map((value) => (
+                <button
+                  className={minutes === value ? "selected" : ""}
+                  type="button"
+                  key={value}
+                  onClick={() => setMinutes(value)}
+                >
+                  {value}分
+                </button>
+              ))}
+            </div>
+            <label className="customMinutes">
+              その他
+              <input
+                aria-label="予定時間（分）"
+                type="number"
+                min="1"
+                max="300"
+                value={minutes}
+                onChange={(e) => setMinutes(Number(e.target.value))}
+              />
+              分
+            </label>
+          </div>
+          <div className="choiceSection">
+            <b>⑥ どっちに入れる？</b>
+            <div className="priorityChoices">
+              <button
+                className={priority === "required" ? "selected" : ""}
+                type="button"
+                onClick={() => setPriority("required")}
+              >
+                ⭐ 今日の必須
+              </button>
+              <button
+                className={priority === "normal" ? "selected" : ""}
+                type="button"
+                onClick={() => setPriority("normal")}
+              >
+                🌱 余裕があれば
+              </button>
+            </div>
+          </div>
+          <div className="taskPreview">
+            <small>この予定を追加します</small>
+            <b>
+              {subject}　{previewTitle}
+            </b>
+            <span>
+              {minutes}分・
+              {priority === "required" ? "今日の必須" : "余裕があれば"}
+            </span>
+          </div>
           <div className="actions">
             <button
               className="primary"
