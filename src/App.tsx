@@ -133,13 +133,19 @@ function AddTask({
   upd: (d: Data) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState("");
+  const [taskName, setTaskName] = useState("ワーク");
+  const [customName, setCustomName] = useState("");
+  const [detail, setDetail] = useState("");
   const [subject, setSubject] = useState("その他");
   const [minutes, setMinutes] = useState(15);
   const [priority, setPriority] = useState<Task["priority"]>("required");
   const add = () => {
-    const cleanTitle = title.trim();
-    if (!cleanTitle) return;
+    const baseName =
+      taskName === "その他（自由入力）" ? customName.trim() : taskName;
+    if (!baseName) return;
+    const cleanTitle = detail.trim()
+      ? `${baseName}：${detail.trim()}`
+      : baseName;
     const now = new Date().toISOString();
     const task: Task = {
       id: `user-${Date.now()}-${crypto.randomUUID()}`,
@@ -162,7 +168,9 @@ function AddTask({
       updatedAt: now,
     } as Task;
     upd({ ...d, tasks: [...d.tasks, task] });
-    setTitle("");
+    setTaskName("ワーク");
+    setCustomName("");
+    setDetail("");
     setMinutes(15);
     setOpen(false);
   };
@@ -179,10 +187,51 @@ function AddTask({
         <div className="addTaskForm">
           <p className="notice">{date} に追加します</p>
           <Label t="タスク名">
+            <select
+              value={taskName}
+              onChange={(e) => setTaskName(e.target.value)}
+            >
+              <optgroup label="ワーク・教材">
+                <option>ワーク</option>
+                <option>ドラゴン桜計算プリント</option>
+                <option>めきめきEnglish 2</option>
+                <option>キホンの夏</option>
+                <option>1年生の復習評価テスト</option>
+                <option>3年間の総仕上げ問題集</option>
+                <option>学習整理 理科</option>
+                <option>英検4級学習</option>
+              </optgroup>
+              <optgroup label="学習内容">
+                <option>プリント</option>
+                <option>宿題</option>
+                <option>予習</option>
+                <option>復習</option>
+                <option>間違い直し</option>
+                <option>テスト対策</option>
+                <option>英単語</option>
+                <option>リスニング</option>
+                <option>読書</option>
+                <option>レポート</option>
+                <option>調べ学習</option>
+                <option>制作</option>
+              </optgroup>
+              <option>その他（自由入力）</option>
+            </select>
+          </Label>
+          {taskName === "その他（自由入力）" && (
+            <Label t="タスク名を入力">
+              <input
+                value={customName}
+                onChange={(e) => setCustomName(e.target.value)}
+                placeholder="タスク名"
+              />
+            </Label>
+          )}
+          <Label t="ページ・範囲・内容（任意）">
             <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="例：英単語を10個覚える"
+              value={detail}
+              onChange={(e) => setDetail(e.target.value)}
+              placeholder="例：p.10〜15、英単語10個"
             />
           </Label>
           <Label t="科目">
@@ -229,7 +278,7 @@ function AddTask({
             <button
               className="primary"
               type="button"
-              disabled={!title.trim()}
+              disabled={taskName === "その他（自由入力）" && !customName.trim()}
               onClick={add}
             >
               予定を追加
