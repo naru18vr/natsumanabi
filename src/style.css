@@ -324,11 +324,6 @@ progress::-webkit-progress-value {
   color: inherit;
   cursor: pointer;
 }
-.day.selected {
-  outline: 3px solid #126b5b;
-  outline-offset: 1px;
-  background: #eef8f4;
-}
 .day b,
 .day small {
   display: block;
@@ -347,25 +342,6 @@ progress::-webkit-progress-value {
 .day.stay {
   background: #e7f0f8;
   border-top-color: #4b86b4;
-}
-.calendarDetail {
-  position: fixed;
-  z-index: 20;
-  left: max(12px, calc((100vw - 736px) / 2));
-  right: max(12px, calc((100vw - 736px) / 2));
-  bottom: calc(84px + env(safe-area-inset-bottom));
-  max-height: 62vh;
-  overflow-y: auto;
-  border-top: 6px solid #126b5b;
-  box-shadow: 0 18px 50px #173c3466;
-}
-.calendarDetail h2 {
-  margin: 6px 0 12px;
-}
-.detailClose {
-  min-height: 40px;
-  padding: 6px 10px;
-  font-size: 12px;
 }
 .weekTask,
 .calendarTask {
