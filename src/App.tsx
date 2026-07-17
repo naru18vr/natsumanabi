@@ -123,6 +123,30 @@ function MoveTask({
     </div>
   );
 }
+function DeleteTask({
+  task,
+  d,
+  upd,
+}: {
+  task: Task;
+  d: Data;
+  upd: (d: Data) => void;
+}) {
+  const remove = () => {
+    if (
+      !confirm(
+        `「${task.title}」を${task.date}の予定から削除しますか？\nこの操作は元に戻せません。`,
+      )
+    )
+      return;
+    upd({ ...d, tasks: d.tasks.filter((item) => item.id !== task.id) });
+  };
+  return (
+    <button className="deleteTask" type="button" onClick={remove}>
+      🗑 削除
+    </button>
+  );
+}
 function AddTask({
   date,
   d,
@@ -547,7 +571,10 @@ function TaskRow({
         <button onClick={() => status(t, "partial")}>一部完了</button>
         <button onClick={() => status(t, "rescheduled")}>明日に調整</button>
       </div>
-      <MoveTask task={t} d={d} upd={upd} />
+      <div className="taskTools">
+        <MoveTask task={t} d={d} upd={upd} />
+        <DeleteTask task={t} d={d} upd={upd} />
+      </div>
     </Card>
   );
 }
@@ -590,7 +617,10 @@ function Week({ d, upd }: { d: Data; upd: (d: Data) => void }) {
                 <p>
                   {t.status === "completed" ? "✅" : "□"} {t.subject}　{t.title}
                 </p>
-                <MoveTask task={t} d={d} upd={upd} />
+                <div className="taskTools">
+                  <MoveTask task={t} d={d} upd={upd} />
+                  <DeleteTask task={t} d={d} upd={upd} />
+                </div>
               </div>
             ))}
             {!ts.length && !es.length && <p className="muted">予定なし</p>}
