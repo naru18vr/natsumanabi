@@ -5,6 +5,7 @@ import {
   overdueTasks,
   rebalanceDay,
   reviewCopies,
+  suggestedMoves,
 } from "./planner";
 import type { Task } from "./types";
 
@@ -58,6 +59,17 @@ describe("planner", () => {
     );
     expect(result.find((x) => x.id === "required")?.date).toBe("2026-07-21");
     expect(result.find((x) => x.id === "extra")?.date).toBe("2026-07-22");
+  });
+  it("移動候補の名前を具体的に返す", () => {
+    const candidates = suggestedMoves(
+      [
+        task("必須", "2026-07-21", 60, "required"),
+        task("復習", "2026-07-21", 30, "normal"),
+      ],
+      "2026-07-21",
+      60,
+    );
+    expect(candidates.map((item) => item.title)).toEqual(["復習"]);
   });
   it("締切までの1日量を計算する", () => {
     expect(
