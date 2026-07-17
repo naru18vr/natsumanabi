@@ -22,7 +22,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Today d={d} upd={upd} />} />
           <Route path="/week" element={<Week d={d} upd={upd} />} />
-          <Route path="/calendar" element={<Calendar d={d} />} />
+          <Route path="/calendar" element={<Calendar d={d} upd={upd} />} />
           <Route path="/homework" element={<Homework d={d} />} />
           <Route path="/eiken" element={<Eiken d={d} upd={upd} />} />
           <Route path="/report" element={<Report d={d} />} />
@@ -57,6 +57,65 @@ function Card({
   className?: string;
 }) {
   return <section className={"card " + className}>{children}</section>;
+}
+function MoveTask({
+  task,
+  d,
+  upd,
+}: {
+  task: Task;
+  d: Data;
+  upd: (d: Data) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [destination, setDestination] = useState(task.date);
+  if (task.status === "completed") return null;
+  const move = () => {
+    if (!destination || destination === task.date) return;
+    const from = task.date;
+    upd({
+      ...d,
+      tasks: d.tasks.map((item) =>
+        item.id === task.id
+          ? {
+              ...item,
+              date: destination,
+              status: "pending",
+              rescheduleHistory: [
+                ...item.rescheduleHistory,
+                `${from}→${destination}`,
+              ],
+            }
+          : item,
+      ),
+    });
+    setOpen(false);
+  };
+  return (
+    <div className="moveTask">
+      <button type="button" onClick={() => setOpen(!open)}>
+        📅 日付を移動
+      </button>
+      {open && (
+        <div className="movePicker">
+          <input
+            aria-label="移動先の日付"
+            type="date"
+            min={d.settings.studyStartDate}
+            max={d.settings.examDate}
+            value={destination}
+            onChange={(e) => setDestination(e.target.value)}
+          />
+          <button className="primary" type="button" onClick={move}>
+            この日に移動
+          </button>
+          <button type="button" onClick={() => setOpen(false)}>
+            閉じる
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
   const [date, setDate] = useState(today());
@@ -234,10 +293,13 @@ function Week({ d, upd }: { d: Data; upd: (d: Data) => void }) {
                 🏫 {event.startTime}〜{event.endTime} {event.title}
               </p>
             ))}
-            {ts.slice(0, 5).map((t) => (
-              <p key={t.id}>
-                {t.status === "completed" ? "✅" : "□"} {t.subject}　{t.title}
-              </p>
+            {ts.map((t) => (
+              <div className="weekTask" key={t.id}>
+                <p>
+                  {t.status === "completed" ? "✅" : "□"} {t.subject}　{t.title}
+                </p>
+                <MoveTask task={t} d={d} upd={upd} />
+              </div>
             ))}
             {!ts.length && !es.length && <p className="muted">予定なし</p>}
           </Card>
@@ -246,7 +308,7 @@ function Week({ d, upd }: { d: Data; upd: (d: Data) => void }) {
     </>
   );
 }
-function Calendar({ d }: { d: Data }) {
+function Calendar({ d, upd }: { d: Data; upd: (d: Data) => void }) {
   const [selected, setSelected] = useState("2026-07-21");
   const dates = Array.from({ length: 67 }, (_, i) => {
     const x = new Date("2026-07-21T00:00:00");
@@ -262,7 +324,10 @@ function Calendar({ d }: { d: Data }) {
   }).format(new Date(selected + "T00:00:00"));
   return (
     <>
-      <Title t="カレンダー" sub="日付をタップすると、その日の予定を確認できます" />
+      <Title
+        t="カレンダー"
+        sub="日付をタップすると、その日の予定を確認できます"
+      />
       <div className="legend">
         <span>🟧 宿題</span>
         <span>🟦 英検</span>
@@ -314,10 +379,13 @@ function Calendar({ d }: { d: Data }) {
           </p>
         ))}
         {selectedTasks.map((task) => (
-          <p key={task.id}>
-            {task.status === "completed" ? "✅" : "□"} {task.subject}　
-            <b>{task.title}</b>（{task.estimatedMinutes}分）
-          </p>
+          <div className="calendarTask" key={task.id}>
+            <p>
+              {task.status === "completed" ? "✅" : "□"} {task.subject}　
+              <b>{task.title}</b>（{task.estimatedMinutes}分）
+            </p>
+            <MoveTask task={task} d={d} upd={upd} />
+          </div>
         ))}
         {selected === "2026-07-31" && <p>🏁 夏休み宿題の家庭内完了期限</p>}
         {selected === "2026-08-31" && <p>🏫 夏休み終了日</p>}
