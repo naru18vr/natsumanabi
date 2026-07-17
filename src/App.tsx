@@ -48,6 +48,16 @@ const notify = (message: string) =>
   window.dispatchEvent(
     new CustomEvent("natsumanabi-notify", { detail: message }),
   );
+const duplicateExists = (tasks: Task[], date: string, title: string) =>
+  tasks.some(
+    (task) =>
+      task.date === date &&
+      task.title.trim().toLowerCase() === title.trim().toLowerCase() &&
+      task.status !== "skipped",
+  );
+const allowDuplicate = (tasks: Task[], date: string, title: string) =>
+  !duplicateExists(tasks, date, title) ||
+  confirm(`「${title}」は同じ日にあります。もう1つ追加しますか？`);
 export default function App() {
   const [d, setD] = useState<Data>(load);
   const [simpleMode, setSimpleMode] = useState(
@@ -60,7 +70,10 @@ export default function App() {
   const [guideOpen, setGuideOpen] = useState(
     () => localStorage.getItem("natsumanabi-guide") !== "done",
   );
-  const [undoData, setUndoData] = useState<Data | null>(null);
+  const [undoHistory, setUndoHistory] = useState<Data[]>([]);
+  const [undoVisible, setUndoVisible] = useState(false);
+  const [online, setOnline] = useState(() => navigator.onLine);
+  const [saveState, setSaveState] = useState("保存済み");
   useEffect(() => {
     const handler = (event: Event) => {
       setToast((event as CustomEvent<string>).detail);
@@ -69,10 +82,36 @@ export default function App() {
     window.addEventListener("natsumanabi-notify", handler);
     return () => window.removeEventListener("natsumanabi-notify", handler);
   }, []);
+  useEffect(() => {
+    const updateOnline = () => setOnline(navigator.onLine);
+    window.addEventListener("online", updateOnline);
+    window.addEventListener("offline", updateOnline);
+    return () => {
+      window.removeEventListener("online", updateOnline);
+      window.removeEventListener("offline", updateOnline);
+    };
+  }, []);
+  useEffect(() => {
+    if (!undoVisible) return;
+    const timer = setTimeout(() => setUndoVisible(false), 10000);
+    return () => clearTimeout(timer);
+  }, [undoVisible, undoHistory]);
   const upd = (x: Data) => {
-    setUndoData(d);
+    setUndoHistory((history) => [d, ...history].slice(0, 5));
+    setUndoVisible(true);
+    setSaveState("保存中…");
     setD(x);
     save(x);
+    setSaveState("保存済み");
+  };
+  const undoLast = () => {
+    const previous = undoHistory[0];
+    if (!previous) return;
+    setD(previous);
+    save(previous);
+    setUndoHistory((history) => history.slice(1));
+    setUndoVisible(false);
+    notify("元に戻しました ✓");
   };
   return (
     <div
@@ -87,6 +126,10 @@ export default function App() {
       <header>
         <span className="logo">なつまなび</span>
         <div className="headerTools">
+          <span className={`saveStatus ${online ? "" : "offline"}`}>
+            {online ? `● ${saveState}` : "● オフライン"}
+          </span>
+          <InstallButton />
           <button
             type="button"
             onClick={() => {
@@ -113,7 +156,7 @@ export default function App() {
           >
             文字{largeText ? "大" : "標準"}
           </button>
-          <span className="badge">v1.8</span>
+          <span className="badge">v1.9</span>
         </div>
       </header>
       <main>
@@ -121,10 +164,20 @@ export default function App() {
           <Route path="/" element={<Today d={d} upd={upd} />} />
           <Route path="/week" element={<Week d={d} upd={upd} />} />
           <Route path="/calendar" element={<Calendar d={d} />} />
-          <Route path="/homework" element={<Homework d={d} />} />
+          <Route path="/homework" element={<Homework d={d} upd={upd} />} />
           <Route path="/eiken" element={<Eiken d={d} upd={upd} />} />
           <Route path="/report" element={<Report d={d} />} />
-          <Route path="/settings" element={<Settings d={d} upd={upd} />} />
+          <Route
+            path="/settings"
+            element={
+              <Settings
+                d={d}
+                upd={upd}
+                undoCount={undoHistory.length}
+                onUndo={undoLast}
+              />
+            }
+          />
           <Route path="/more" element={<More />} />
         </Routes>
       </main>
@@ -142,21 +195,16 @@ export default function App() {
           </NavLink>
         ))}
       </nav>
-      {undoData && (
+      {undoVisible && undoHistory.length > 0 && (
         <div className="globalUndo" role="status">
           <span>変更しました</span>
           <button
             type="button"
-            onClick={() => {
-              setD(undoData);
-              save(undoData);
-              setUndoData(null);
-              notify("元に戻しました ✓");
-            }}
+            onClick={undoLast}
           >
             ↶ 元に戻す
           </button>
-          <button type="button" aria-label="閉じる" onClick={() => setUndoData(null)}>
+          <button type="button" aria-label="閉じる" onClick={() => setUndoVisible(false)}>
             ×
           </button>
         </div>
@@ -166,6 +214,30 @@ export default function App() {
         <QuickGuide onClose={() => setGuideOpen(false)} />
       )}
     </div>
+  );
+}
+function InstallButton() {
+  const [prompt, setPrompt] = useState<any>(null);
+  useEffect(() => {
+    const handler = (event: Event) => {
+      event.preventDefault();
+      setPrompt(event);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+  if (!prompt) return null;
+  return (
+    <button
+      className="installButton"
+      type="button"
+      onClick={async () => {
+        await prompt.prompt();
+        setPrompt(null);
+      }}
+    >
+      ＋アプリ
+    </button>
   );
 }
 function UpdateBanner() {
@@ -538,6 +610,7 @@ function AddTask({
       selectedRange && selectedRange !== "指定なし" ? `：${selectedRange}` : "";
     const contentText = contents.length ? `（${contents.join("・")}）` : "";
     const cleanTitle = `${baseName}${rangeText}${contentText}`;
+    if (!allowDuplicate(d.tasks, date, cleanTitle)) return;
     const now = new Date().toISOString();
     const task: Task = {
       id: `user-${Date.now()}-${crypto.randomUUID()}`,
@@ -574,6 +647,7 @@ function AddTask({
   };
   const quickAddNow = () => {
     if (!quickTitle.trim()) return;
+    if (!allowDuplicate(d.tasks, date, quickTitle.trim())) return;
     const base = initialData().tasks[0];
     const task: Task = {
       ...base,
@@ -1054,6 +1128,7 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
     upd({ ...d, tasks: next });
   };
   const quickAdd = (title: string, subject: string, minutes: number) => {
+    if (!allowDuplicate(d.tasks, date, title)) return;
     const base = initialData().tasks[0];
     upd({
       ...d,
@@ -1535,12 +1610,29 @@ function Week({ d, upd }: { d: Data; upd: (d: Data) => void }) {
 }
 function Calendar({ d }: { d: Data }) {
   const navigate = useNavigate();
-  const dates = Array.from({ length: 67 }, (_, i) => {
-    const x = new Date("2026-07-21T00:00:00");
+  const knownDates = [
+    today(),
+    d.settings.studyStartDate,
+    d.settings.examDate,
+    ...d.tasks.map((task) => task.date),
+    ...d.events.map((event) => event.date),
+  ].filter(Boolean).sort();
+  const firstDate = knownDates[0];
+  const lastDate = knownDates[knownDates.length - 1];
+  const dateCount = Math.max(
+    1,
+    Math.round(
+      (new Date(`${lastDate}T00:00:00`).getTime() -
+        new Date(`${firstDate}T00:00:00`).getTime()) /
+        86400000,
+    ) + 1,
+  );
+  const dates = Array.from({ length: dateCount }, (_, i) => {
+    const x = new Date(`${firstDate}T00:00:00`);
     x.setDate(x.getDate() + i);
     return x.toLocaleDateString("sv-SE");
   });
-  const months = ["2026-07", "2026-08", "2026-09"];
+  const months = [...new Set(dates.map((date) => date.slice(0, 7)))];
   return (
     <>
       <Title
@@ -1610,10 +1702,12 @@ function Calendar({ d }: { d: Data }) {
     </>
   );
 }
-function Homework({ d }: { d: Data }) {
+function Homework({ d, upd }: { d: Data; upd: (d: Data) => void }) {
   const [query, setQuery] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("すべて");
   const [statusFilter, setStatusFilter] = useState("未完了");
+  const [selected, setSelected] = useState<string[]>([]);
+  const [bulkDate, setBulkDate] = useState(today());
   const materials = aggregateMaterials(
     d.tasks.filter((task) => task.category === "夏休み宿題"),
   );
@@ -1629,6 +1723,66 @@ function Homework({ d }: { d: Data }) {
       (statusFilter === "未完了" && task.status !== "completed");
     return matchesQuery && matchesSubject && matchesStatus;
   });
+  const clearSelection = () => setSelected([]);
+  const completeSelected = () => {
+    upd({
+      ...d,
+      tasks: d.tasks.map((task) =>
+        selected.includes(task.id)
+          ? {
+              ...task,
+              status: "completed" as const,
+              completedAt: new Date().toISOString(),
+              actualMinutes: task.actualMinutes || task.estimatedMinutes,
+            }
+          : task,
+      ),
+    });
+    notify(`${selected.length}件を完了にしました ✓`);
+    clearSelection();
+  };
+  const moveSelected = () => {
+    upd({
+      ...d,
+      tasks: d.tasks.map((task) =>
+        selected.includes(task.id)
+          ? {
+              ...task,
+              date: bulkDate,
+              status: "pending" as const,
+              rescheduleHistory: [
+                ...task.rescheduleHistory,
+                `${task.date}→${bulkDate}（まとめて移動）`,
+              ],
+            }
+          : task,
+      ),
+    });
+    notify(`${selected.length}件を${dateLabel(bulkDate)}へ移動しました ✓`);
+    clearSelection();
+  };
+  const deleteSelected = () => {
+    if (!confirm(`${selected.length}件を削除しますか？ 設定から復元できます。`)) return;
+    let trash: { task: Task; deletedAt: string }[] = [];
+    try {
+      trash = JSON.parse(localStorage.getItem("natsumanabi-trash") || "[]");
+    } catch {
+      trash = [];
+    }
+    const deleted = d.tasks
+      .filter((task) => selected.includes(task.id))
+      .map((task, index) => ({
+        task,
+        deletedAt: `${new Date().toISOString()}-${index}`,
+      }));
+    localStorage.setItem(
+      "natsumanabi-trash",
+      JSON.stringify([...deleted, ...trash].slice(0, 30)),
+    );
+    upd({ ...d, tasks: d.tasks.filter((task) => !selected.includes(task.id)) });
+    notify(`${selected.length}件を削除しました`);
+    clearSelection();
+  };
   return (
     <>
       <Title t="宿題一覧" sub="教材ごとの累計進捗" />
@@ -1663,12 +1817,51 @@ function Homework({ d }: { d: Data }) {
           </select>
         </div>
         <small>{foundTasks.length}件見つかりました</small>
+        {selected.length > 0 && (
+          <div className="bulkActions">
+            <b>{selected.length}件を選択中</b>
+            <input
+              type="date"
+              aria-label="まとめて移動する日"
+              value={bulkDate}
+              onChange={(event) => setBulkDate(event.target.value)}
+            />
+            <button className="primary" type="button" onClick={moveSelected}>
+              まとめて移動
+            </button>
+            <button type="button" onClick={completeSelected}>
+              まとめて完了
+            </button>
+            <button className="danger" type="button" onClick={deleteSelected}>
+              まとめて削除
+            </button>
+            <button type="button" onClick={clearSelection}>
+              選択をやめる
+            </button>
+          </div>
+        )}
         <div className="searchResults">
           {foundTasks.slice(0, 20).map((task) => (
-            <NavLink key={task.id} to={`/?date=${task.date}`}>
-              <span>{subjectIcon(task.subject)} {task.title}</span>
-              <small>{dateLabel(task.date)}・{task.estimatedMinutes}分</small>
-            </NavLink>
+            <div className="searchResult" key={task.id}>
+              <label>
+                <input
+                  type="checkbox"
+                  aria-label={`${task.title}を選択`}
+                  checked={selected.includes(task.id)}
+                  onChange={(event) =>
+                    setSelected(
+                      event.target.checked
+                        ? [...selected, task.id]
+                        : selected.filter((id) => id !== task.id),
+                    )
+                  }
+                />
+              </label>
+              <NavLink to={`/?date=${task.date}`}>
+                <span>{subjectIcon(task.subject)} {task.title}</span>
+                <small>{dateLabel(task.date)}・{task.estimatedMinutes}分</small>
+              </NavLink>
+            </div>
           ))}
           {!foundTasks.length && <p className="muted">当てはまる予定はありません。</p>}
         </div>
@@ -1867,24 +2060,37 @@ function Report({ d }: { d: Data }) {
     </>
   );
 }
-function Settings({ d, upd }: { d: Data; upd: (d: Data) => void }) {
+function Settings({
+  d,
+  upd,
+  undoCount,
+  onUndo,
+}: {
+  d: Data;
+  upd: (d: Data) => void;
+  undoCount: number;
+  onUndo: () => void;
+}) {
   const s = d.settings;
   const [restoreCandidate, setRestoreCandidate] = useState<Data | null>(null);
   const set = (k: keyof typeof s, v: any) =>
     upd({ ...d, settings: { ...s, [k]: v } });
+  const backupFile = () =>
+    new File(
+      [
+        JSON.stringify(
+          { ...d, appVersion: 2, exportedAt: new Date().toISOString() },
+          null,
+          2,
+        ),
+      ],
+      `なつまなび-backup-${today()}.json`,
+      { type: "application/json" },
+    );
   function backup() {
-    const b = new Blob(
-        [
-          JSON.stringify(
-            { ...d, appVersion: 2, exportedAt: new Date().toISOString() },
-            null,
-            2,
-          ),
-        ],
-        { type: "application/json" },
-      ),
-      a = document.createElement("a");
-    const url = URL.createObjectURL(b);
+    const file = backupFile();
+    const a = document.createElement("a");
+    const url = URL.createObjectURL(file);
     a.href = url;
     a.download = `なつまなび-backup-${today()}.json`;
     a.click();
@@ -1892,9 +2098,30 @@ function Settings({ d, upd }: { d: Data; upd: (d: Data) => void }) {
     localStorage.setItem("natsumanabi-last-backup", String(Date.now()));
     notify("バックアップを保存しました ✓");
   }
+  async function shareBackup() {
+    const file = backupFile();
+    if (navigator.canShare?.({ files: [file] })) {
+      await navigator.share({
+        title: "なつまなびバックアップ",
+        text: "別の端末へ移すためのバックアップです。",
+        files: [file],
+      });
+      notify("バックアップを共有しました ✓");
+    } else {
+      backup();
+      notify("共有に未対応のため、ファイルに保存しました");
+    }
+  }
   return (
     <>
       <Title t="設定" sub="日程・教材・データ管理" />
+      <Card>
+        <h3>↶ 変更履歴</h3>
+        <p>直前から最大5回分まで、順番に元へ戻せます。</p>
+        <button type="button" disabled={!undoCount} onClick={onUndo}>
+          {undoCount ? `1つ元に戻す（残り${undoCount}回）` : "戻せる変更はありません"}
+        </button>
+      </Card>
       <Card>
         <h3>基本設定</h3>
         <Label t="1日の上限（分）">
@@ -1961,6 +2188,9 @@ function Settings({ d, upd }: { d: Data; upd: (d: Data) => void }) {
         </p>
         <button type="button" onClick={backup}>
           JSONを書き出す
+        </button>
+        <button type="button" onClick={shareBackup}>
+          スマホ・別端末へ共有
         </button>
         <label className="button secondary">
           JSONから復元
