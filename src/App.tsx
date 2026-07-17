@@ -22,7 +22,7 @@ export default function App() {
     <div className="app">
       <header>
         <span className="logo">なつまなび</span>
-        <span className="badge">端末だけに保存</span>
+        <span className="badge">端末保存・v1.2</span>
       </header>
       <main>
         <Routes>
