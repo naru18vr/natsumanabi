@@ -140,6 +140,29 @@ const hashPin = async (pin: string) => {
   }
   return btoa(String.fromCharCode(...bytes));
 };
+const summerRoutine = (hasClass: boolean) =>
+  hasClass
+    ? [
+        ["7:30", "起きる・朝ごはん", "☀️"],
+        ["9:00", "今日の必須を1つ", "📚"],
+        ["10:00", "休憩・水分補給", "🥤"],
+        ["10:30", "今日の必須をもう1つ", "✏️"],
+        ["12:00", "昼ごはん・自由時間", "🍚"],
+        ["14:00", "軽い学習・持ち物確認", "🎒"],
+        ["17:30", "塾の夏期講習", "🏫"],
+        ["22:30", "明日の確認・寝る準備", "🌙"],
+      ]
+    : [
+        ["7:30", "起きる・朝ごはん", "☀️"],
+        ["9:00", "今日の必須を1つ", "📚"],
+        ["10:00", "休憩・水分補給", "🥤"],
+        ["10:30", "今日の必須をもう1つ", "✏️"],
+        ["12:00", "昼ごはん・自由時間", "🍚"],
+        ["14:00", "調べ学習・制作・復習", "📝"],
+        ["15:30", "運動・休憩・自由時間", "🏃"],
+        ["20:00", "残りの確認・読書", "✅"],
+        ["22:30", "明日の確認・寝る準備", "🌙"],
+      ];
 export default function App() {
   const [d, setD] = useState<Data>(load);
   const [parentUnlocked, setParentUnlocked] = useState(false);
@@ -1450,6 +1473,32 @@ function Today({
           次の日 →
         </button>
       </div>
+      {date >= addDays(d.settings.studyStartDate, -7) &&
+        date <= d.settings.summerVacationEndDate && (
+          <Card className="summerRoutine">
+            <div className="routineHeading">
+              <div>
+                <span className="eyebrow">毎日の目安</span>
+                <h2>🌻 夏休みの基本スケジュール</h2>
+              </div>
+              {classMinutes > 0 && <b>塾の日</b>}
+            </div>
+            <p>
+              {date < d.settings.studyStartDate
+                ? `${dateLabel(d.settings.studyStartDate)}からこの流れで始めます。`
+                : "時間がずれても大丈夫。上から順に進めよう。"}
+            </p>
+            <ol>
+              {summerRoutine(classMinutes > 0).map(([time, label, icon]) => (
+                <li key={`${time}-${label}`}>
+                  <time>{time}</time>
+                  <span aria-hidden="true">{icon}</span>
+                  <b>{label}</b>
+                </li>
+              ))}
+            </ol>
+          </Card>
+        )}
       <button
         className={`focusButton ${focusMode ? "active" : ""}`}
         type="button"
