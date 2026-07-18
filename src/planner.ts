@@ -12,6 +12,21 @@ export const overdueTasks = (tasks: Task[], date: string) =>
       task.date < date && !["completed", "skipped"].includes(task.status),
   );
 
+export const remainingMinutes = (task: Task) => {
+  if (
+    task.status === "partial" &&
+    task.totalAmount &&
+    task.totalAmount > 0
+  ) {
+    const remaining = Math.max(
+      0,
+      task.totalAmount - (task.completedAmount || 0),
+    );
+    return Math.ceil(task.estimatedMinutes * (remaining / task.totalAmount));
+  }
+  return task.estimatedMinutes;
+};
+
 export function rebalanceDay(tasks: Task[], date: string, limit: number) {
   const todays = tasks.filter(
     (task) => task.date === date && task.status !== "completed",
@@ -79,7 +94,7 @@ export function rebalanceHomeworkToDeadline(
       task.status !== "completed" &&
       task.status !== "skipped"
     ) {
-      load.set(task.date, (load.get(task.date) || 0) + task.estimatedMinutes);
+      load.set(task.date, (load.get(task.date) || 0) + remainingMinutes(task));
     }
   });
 
@@ -92,7 +107,7 @@ export function rebalanceHomeworkToDeadline(
         return loadDiff || a.localeCompare(b);
       })[0];
       destination.set(task.id, bestDay);
-      load.set(bestDay, (load.get(bestDay) || 0) + task.estimatedMinutes);
+      load.set(bestDay, (load.get(bestDay) || 0) + remainingMinutes(task));
     });
 
   const overflowMinutes = days.reduce(
