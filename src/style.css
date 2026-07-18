@@ -1450,6 +1450,58 @@ pre {
   padding: 6px 10px;
   font-size: 12px;
 }
+.summerRoutine {
+  overflow: hidden;
+  border: 2px solid #f0c95d;
+  background: linear-gradient(145deg, #fffdf3, #fff8d9);
+}
+.routineHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.routineHeading h2 {
+  margin: 3px 0 0;
+  font-size: 19px;
+}
+.routineHeading > b {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: #fff;
+  background: #6b55a3;
+  font-size: 12px;
+}
+.summerRoutine > p {
+  margin: 10px 0;
+  color: #6d664e;
+  font-size: 13px;
+}
+.summerRoutine ol {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.summerRoutine li {
+  display: grid;
+  grid-template-columns: 48px 26px 1fr;
+  align-items: center;
+  min-height: 38px;
+  padding: 4px 10px;
+  border-radius: 11px;
+  background: #ffffffb8;
+}
+.summerRoutine time {
+  color: #8a6713;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+.summerRoutine li b {
+  font-size: 13px;
+}
 @media (max-width: 430px) {
   .parentMenu {
     grid-template-columns: 1fr;
