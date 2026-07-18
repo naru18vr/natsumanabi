@@ -14,10 +14,10 @@
       <h1>最新版に更新中</h1>
       <div class="spin"></div>
       <p>学習記録は消えません。</p>
-      <small>終わると週間予定を開きます</small>
+      <small>終わると保護者モードを開きます（v1.12）</small>
     </div>
     <script>
-      (async()=>{try{if('serviceWorker'in navigator){const r=await navigator.serviceWorker.getRegistrations();await Promise.all(r.map(x=>x.unregister()))}if('caches'in window){const k=await caches.keys();await Promise.all(k.map(x=>caches.delete(x)))}}finally{location.replace('./?fresh='+Date.now()+'#/week')}})();
+      (async()=>{try{if('serviceWorker'in navigator){const r=await navigator.serviceWorker.getRegistrations();await Promise.all(r.map(x=>x.unregister()))}if('caches'in window){const k=await caches.keys();await Promise.all(k.map(x=>caches.delete(x)))}}finally{location.replace('./?fresh='+Date.now()+'#/parent')}})();
     </script>
   </body>
 </html>
