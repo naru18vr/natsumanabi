@@ -5,6 +5,7 @@ import {
   overdueTasks,
   rebalanceDay,
   rebalanceHomeworkToDeadline,
+  remainingMinutes,
   reviewCopies,
   suggestedMoves,
 } from "./planner";
@@ -104,6 +105,29 @@ describe("planner", () => {
       60,
     );
     expect(result.tasks[0].date).toBe("2026-07-28");
+  });
+  it("途中まで終えた宿題は残量分だけで配分する", () => {
+    const partial = {
+      ...task("途中", "2026-07-28", 50),
+      status: "partial" as const,
+      totalAmount: 5,
+      completedAmount: 3,
+    };
+    expect(remainingMinutes(partial)).toBe(20);
+  });
+  it("期限内に上限を超える量は超過分を返す", () => {
+    const homework = [
+      { ...task("a", "2026-07-30", 80), category: "夏休み宿題" },
+      { ...task("b", "2026-07-30", 80), category: "夏休み宿題" },
+    ];
+    const result = rebalanceHomeworkToDeadline(
+      homework,
+      "2026-07-30",
+      "2026-07-31",
+      60,
+    );
+    expect(result.overflowMinutes).toBe(40);
+    expect(result.tasks.every((item) => item.date <= "2026-07-31")).toBe(true);
   });
   it("締切までの1日量を計算する", () => {
     expect(
