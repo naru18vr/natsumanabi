@@ -286,7 +286,7 @@ export default function App() {
               🔓 保護者
             </button>
           )}
-          <span className="badge">v1.12</span>
+          <span className="badge">v1.13</span>
         </div>
       </header>
       <main>
@@ -299,7 +299,12 @@ export default function App() {
             path="/week"
             element={<Week d={d} upd={upd} canManage={parentUnlocked} />}
           />
-          <Route path="/calendar" element={<Calendar d={d} />} />
+          <Route
+            path="/calendar"
+            element={
+              <Calendar d={d} upd={upd} canManage={parentUnlocked} />
+            }
+          />
           <Route
             path="/homework"
             element={<Homework d={d} upd={upd} canManage={parentUnlocked} />}
@@ -1859,7 +1864,7 @@ function Week({
   canManage: boolean;
 }) {
   const [start, setStart] = useState("2026-07-21");
-  const [openDay, setOpenDay] = useState("");
+  const [openDay, setOpenDay] = useState("2026-07-21");
   const ds = Array.from({ length: 7 }, (_, i) => {
     const x = new Date(start + "T00:00:00");
     x.setDate(x.getDate() + i);
@@ -1907,7 +1912,7 @@ function Week({
                   {ts.reduce((a, t) => a + t.estimatedMinutes, 0)}分
                 </small>
               </span>
-              <b>{openDay === x ? "▲" : "▼"}</b>
+                <b>{openDay === x ? "閉じる ▲" : "見る・追加 ▼"}</b>
             </button>
             {openDay === x && (
               <div className="dayContents">
@@ -1939,8 +1944,17 @@ function Week({
     </>
   );
 }
-function Calendar({ d }: { d: Data }) {
+function Calendar({
+  d,
+  upd,
+  canManage,
+}: {
+  d: Data;
+  upd: (d: Data) => void;
+  canManage: boolean;
+}) {
   const navigate = useNavigate();
+  const [selectedDate, setSelectedDate] = useState("");
   const knownDates = [
     today(),
     d.settings.studyStartDate,
@@ -1969,8 +1983,15 @@ function Calendar({ d }: { d: Data }) {
     <>
       <Title
         t="カレンダー"
-        sub="日付をタップすると、その日の学習画面へ移動します"
+        sub={
+          canManage
+            ? "日付をタップして、その場で予定を管理できます"
+            : "日付をタップすると、その日の学習画面へ移動します"
+        }
       />
+      {canManage && (
+        <p className="calendarManageHint">🔓 保護者モード：日付を選ぶと追加・編集・移動・削除ができます</p>
+      )}
       <div className="legend">
         <span>🟧 宿題</span>
         <span>🟦 英検</span>
@@ -2001,10 +2022,14 @@ function Calendar({ d }: { d: Data }) {
                 return (
                   <button
                     type="button"
-                    aria-label={`${dateLabel(x)}の学習画面を開く`}
-                    className={`day ${d.settings.accommodationDates.includes(x) ? "stay" : ""}`}
+                    aria-label={`${dateLabel(x)}${canManage ? "の予定を管理" : "の学習画面を開く"}`}
+                    className={`day ${selectedDate === x ? "selected" : ""} ${d.settings.accommodationDates.includes(x) ? "stay" : ""}`}
                     key={x}
-                    onClick={() => navigate(`/?date=${x}`)}
+                    onClick={() =>
+                      canManage
+                        ? setSelectedDate(selectedDate === x ? "" : x)
+                        : navigate(`/?date=${x}`)
+                    }
                   >
                     <b>{Number(x.slice(-2))}</b>
                     <small>
@@ -2031,6 +2056,48 @@ function Calendar({ d }: { d: Data }) {
                 );
               })}
             </div>
+            {canManage && selectedDate.startsWith(month) && (
+              <Card className="calendarManager">
+                <div className="calendarManagerHeading">
+                  <div>
+                    <span className="eyebrow">選んだ日</span>
+                    <h3>{dateLabel(selectedDate)}の予定</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/?date=${selectedDate}`)}
+                  >
+                    今日の画面で見る →
+                  </button>
+                </div>
+                {d.events
+                  .filter((event) => event.date === selectedDate)
+                  .map((event) => (
+                    <p className="calendarEvent" key={event.id}>
+                      🏫 {event.startTime}〜{event.endTime} {event.title}
+                    </p>
+                  ))}
+                {d.tasks
+                  .filter((task) => task.date === selectedDate)
+                  .map((task) => (
+                    <div className="calendarTask" key={task.id}>
+                      <p>
+                        {task.status === "completed" ? "✅" : "□"}{" "}
+                        {subjectIcon(task.subject)} {task.subject}　{task.title}
+                      </p>
+                      <div className="taskTools">
+                        <EditTask task={task} d={d} upd={upd} />
+                        <MoveTask task={task} d={d} upd={upd} />
+                        <DeleteTask task={task} d={d} upd={upd} />
+                      </div>
+                    </div>
+                  ))}
+                {!d.tasks.some((task) => task.date === selectedDate) && (
+                  <p className="muted">学習予定はまだありません</p>
+                )}
+                <AddTask date={selectedDate} d={d} upd={upd} />
+              </Card>
+            )}
           </section>
         );
       })}
