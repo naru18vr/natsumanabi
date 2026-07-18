@@ -33,6 +33,8 @@ describe("画面操作", () => {
     });
 
     expect(container.textContent).toContain("今日の必須");
+    expect(container.textContent).toContain("予定の追加・変更は保護者モード");
+    expect(container.querySelector(".deleteTask")).toBeNull();
     const complete = container.querySelector<HTMLButtonElement>(
       ".completeAction",
     );
@@ -55,11 +57,37 @@ describe("画面操作", () => {
     const root = createRoot(container);
     await act(async () => {
       root.render(
-        <MemoryRouter initialEntries={["/?date=2026-07-21"]}>
+        <MemoryRouter initialEntries={["/parent"]}>
           <App />
         </MemoryRouter>,
       );
     });
+    const inputs = container.querySelectorAll<HTMLInputElement>(
+      '.parentGate input[type="password"]',
+    );
+    expect(inputs).toHaveLength(2);
+    await act(async () => {
+      inputs.forEach((input) => {
+        const setter = Object.getOwnPropertyDescriptor(
+          HTMLInputElement.prototype,
+          "value",
+        )?.set;
+        setter?.call(input, "1234");
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+    });
+    const setupButton = [...container.querySelectorAll<HTMLButtonElement>("button")]
+      .find((item) => item.textContent?.includes("PINを設定して"));
+    await act(async () => {
+      setupButton?.click();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(container.textContent).toContain("保護者ダッシュボード");
+    expect(localStorage.getItem("natsumanabi-parent-pin")).not.toBe("1234");
+    const todayLink = container.querySelector<HTMLAnchorElement>(
+      '.parentMenu a[href="/"]',
+    );
+    await act(async () => todayLink?.click());
     const button = [...container.querySelectorAll<HTMLButtonElement>("button")]
       .find((item) => item.textContent?.includes("7月31日までに均等"));
     expect(button).not.toBeUndefined();
