@@ -39,7 +39,40 @@ describe("画面操作", () => {
     expect(complete).not.toBeNull();
     await act(async () => complete?.click());
     expect(load().tasks.some((task) => task.status === "completed")).toBe(true);
+    const undo = container.querySelector<HTMLButtonElement>(
+      ".globalUndo button",
+    );
+    await act(async () => undo?.click());
+    expect(load().tasks.every((task) => task.status !== "completed")).toBe(true);
 
+    await act(async () => root.unmount());
+    container.remove();
+  });
+
+  it("7月31日までの宿題リバランスを画面から実行できる", async () => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(
+        <MemoryRouter initialEntries={["/?date=2026-07-21"]}>
+          <App />
+        </MemoryRouter>,
+      );
+    });
+    const button = [...container.querySelectorAll<HTMLButtonElement>("button")]
+      .find((item) => item.textContent?.includes("7月31日までに均等"));
+    expect(button).not.toBeUndefined();
+    await act(async () => button?.click());
+    const homework = load().tasks.filter(
+      (task) => task.category === "夏休み宿題" && task.status !== "completed",
+    );
+    expect(homework.every((task) => task.date <= "2026-07-31")).toBe(true);
+    expect(
+      homework.some((task) =>
+        task.rescheduleHistory.some((entry) => entry.includes("まで再配分")),
+      ),
+    ).toBe(true);
     await act(async () => root.unmount());
     container.remove();
   });
