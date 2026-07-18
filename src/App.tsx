@@ -130,8 +130,19 @@ const duplicateExists = (tasks: Task[], date: string, title: string) =>
 const allowDuplicate = (tasks: Task[], date: string, title: string) =>
   !duplicateExists(tasks, date, title) ||
   confirm(`「${title}」は同じ日にあります。もう1つ追加しますか？`);
+const hashPin = async (pin: string) => {
+  const bytes = new TextEncoder().encode(`natsumanabi-parent:${pin}`);
+  if (typeof crypto !== "undefined" && crypto.subtle) {
+    const digest = await crypto.subtle.digest("SHA-256", bytes);
+    return [...new Uint8Array(digest)]
+      .map((value) => value.toString(16).padStart(2, "0"))
+      .join("");
+  }
+  return btoa(String.fromCharCode(...bytes));
+};
 export default function App() {
   const [d, setD] = useState<Data>(load);
+  const [parentUnlocked, setParentUnlocked] = useState(false);
   const [simpleMode, setSimpleMode] = useState(
     () => safeStorageGet("natsumanabi-view") !== "detail",
   );
@@ -192,6 +203,11 @@ export default function App() {
     setUndoVisible(false);
     notify("元に戻しました ✓");
   };
+  const lockParent = () => {
+    setParentUnlocked(false);
+    setUndoHistory([]);
+    setUndoVisible(false);
+  };
   return (
     <div
       className={`app ${simpleMode ? "simpleMode" : "detailMode"} ${largeText ? "largeText" : ""}`}
@@ -235,29 +251,79 @@ export default function App() {
           >
             文字{largeText ? "大" : "標準"}
           </button>
-          <span className="badge">v1.11</span>
+          {parentUnlocked && (
+            <button
+              className="parentActive"
+              type="button"
+              onClick={() => {
+                lockParent();
+                notify("保護者モードを終了しました");
+              }}
+            >
+              🔓 保護者
+            </button>
+          )}
+          <span className="badge">v1.12</span>
         </div>
       </header>
       <main>
         <Routes>
-          <Route path="/" element={<Today d={d} upd={upd} />} />
-          <Route path="/week" element={<Week d={d} upd={upd} />} />
+          <Route
+            path="/"
+            element={<Today d={d} upd={upd} canManage={parentUnlocked} />}
+          />
+          <Route
+            path="/week"
+            element={<Week d={d} upd={upd} canManage={parentUnlocked} />}
+          />
           <Route path="/calendar" element={<Calendar d={d} />} />
-          <Route path="/homework" element={<Homework d={d} upd={upd} />} />
-          <Route path="/eiken" element={<Eiken d={d} upd={upd} />} />
+          <Route
+            path="/homework"
+            element={<Homework d={d} upd={upd} canManage={parentUnlocked} />}
+          />
+          <Route
+            path="/eiken"
+            element={
+              <ParentGate
+                unlocked={parentUnlocked}
+                onUnlock={() => setParentUnlocked(true)}
+              >
+                <Eiken d={d} upd={upd} />
+              </ParentGate>
+            }
+          />
           <Route path="/report" element={<Report d={d} />} />
           <Route
             path="/settings"
             element={
-              <Settings
-                d={d}
-                upd={upd}
-                undoCount={undoHistory.length}
-                onUndo={undoLast}
-              />
+              <ParentGate
+                unlocked={parentUnlocked}
+                onUnlock={() => setParentUnlocked(true)}
+              >
+                <Settings
+                  d={d}
+                  upd={upd}
+                  undoCount={undoHistory.length}
+                  onUndo={undoLast}
+                />
+              </ParentGate>
             }
           />
           <Route path="/more" element={<More />} />
+          <Route
+            path="/parent"
+            element={
+              <ParentGate
+                unlocked={parentUnlocked}
+                onUnlock={() => setParentUnlocked(true)}
+              >
+                <ParentDashboard
+                  d={d}
+                  onLock={lockParent}
+                />
+              </ParentGate>
+            }
+          />
         </Routes>
       </main>
       <nav>
@@ -1108,7 +1174,15 @@ function AddTask({
     </Card>
   );
 }
-function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
+function Today({
+  d,
+  upd,
+  canManage,
+}: {
+  d: Data;
+  upd: (d: Data) => void;
+  canManage: boolean;
+}) {
   const location = useLocation();
   const requestedDate = new URLSearchParams(location.search).get("date");
   const [date, setDate] = useState(
@@ -1386,7 +1460,7 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
       <details className="todaySupport">
         <summary>＋ 予定の追加・整理</summary>
         <div>
-      <div className="quickTemplates">
+      {canManage && <div className="quickTemplates">
         <b>よく使う予定</b>
         <div>
           <button type="button" onClick={() => quickAdd("英単語", "英語", 10)}>
@@ -1405,7 +1479,7 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
             間違い直し
           </button>
         </div>
-      </div>
+      </div>}
       {overdue.length > 0 && (
         <Card className="overdueCard">
           <h3>📦 前の日から残っている予定</h3>
@@ -1413,13 +1487,13 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
           {overdue.slice(0, 4).map((task) => (
             <small key={task.id}>・{task.title}</small>
           ))}
-          <button
+          {canManage && <button
             className="primary wide"
             type="button"
             onClick={moveOverdueToToday}
           >
             まとめて今日へ移動
-          </button>
+          </button>}
         </Card>
       )}
       {homeworkBalance && remainingHomework.length > 0 && (
@@ -1449,7 +1523,7 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
               {homeworkBalance.overflowMinutes}分あります。
             </p>
           )}
-          <button
+          {canManage && <button
             className="primary wide"
             type="button"
             disabled={!balanceChangeCount}
@@ -1461,7 +1535,7 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
             {balanceChangeCount
               ? "7月31日までに均等に組み直す"
               : "すでに均等です ✓"}
-          </button>
+          </button>}
         </Card>
       )}
       {mins > d.settings.dailyLimitMinutes && !homeworkBalance && (
@@ -1478,7 +1552,7 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
               ))}
             </div>
           )}
-          <button
+          {canManage && <button
             className="primary wide"
             type="button"
             onClick={() =>
@@ -1493,7 +1567,7 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
             }
           >
             余裕タスクを明日へ調整
-          </button>
+          </button>}
         </Card>
       )}
       {forecasts[0] && (
@@ -1525,7 +1599,13 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
           {event.notes && <p>{event.notes}</p>}
         </Card>
       ))}
-      <AddTask date={date} d={d} upd={upd} />
+      {canManage ? (
+        <AddTask date={date} d={d} upd={upd} />
+      ) : (
+        <NavLink className="parentHint" to="/parent">
+          🔒 予定の追加・変更は保護者モード
+        </NavLink>
+      )}
       <h2>今日の必須</h2>
       {displayedRequired.length ? (
         displayedRequired.map((t) => (
@@ -1537,6 +1617,7 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
             upd={upd}
             onUp={() => reorder(t, -1)}
             onDown={() => reorder(t, 1)}
+            canManage={canManage}
           />
         ))
       ) : (
@@ -1555,6 +1636,7 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
             upd={upd}
             onUp={() => reorder(t, -1)}
             onDown={() => reorder(t, 1)}
+            canManage={canManage}
           />
         ))}
       <a
@@ -1575,6 +1657,7 @@ function TaskRow({
   upd,
   onUp,
   onDown,
+  canManage,
 }: {
   t: Task;
   status: (t: Task, s: Task["status"]) => void;
@@ -1582,6 +1665,7 @@ function TaskRow({
   upd: (d: Data) => void;
   onUp?: () => void;
   onDown?: () => void;
+  canManage: boolean;
 }) {
   const [partialOpen, setPartialOpen] = useState(false);
   const [partialAmount, setPartialAmount] = useState(t.completedAmount || 0);
@@ -1657,7 +1741,7 @@ function TaskRow({
         >
           ◐ 少しできた
         </button>
-        <MoveTask task={t} d={d} upd={upd} />
+        {canManage && <MoveTask task={t} d={d} upd={upd} />}
       </div>
       {partialOpen && t.totalAmount && (
         <div className="partialPanel">
@@ -1686,7 +1770,7 @@ function TaskRow({
       )}
       <details className="moreActions">
         <summary>… その他</summary>
-        <div className="taskTools">
+        {canManage && <div className="taskTools">
           <div className="orderButtons">
             <button type="button" onClick={onUp}>
               ↑ 上へ
@@ -1697,7 +1781,7 @@ function TaskRow({
           </div>
           <EditTask task={t} d={d} upd={upd} />
           <DeleteTask task={t} d={d} upd={upd} />
-        </div>
+        </div>}
         <div className="timerPanel">
           <b>
             ⏱ {String(Math.floor(seconds / 60)).padStart(2, "0")}:
@@ -1716,7 +1800,15 @@ function TaskRow({
     </Card>
   );
 }
-function Week({ d, upd }: { d: Data; upd: (d: Data) => void }) {
+function Week({
+  d,
+  upd,
+  canManage,
+}: {
+  d: Data;
+  upd: (d: Data) => void;
+  canManage: boolean;
+}) {
   const [start, setStart] = useState("2026-07-21");
   const [openDay, setOpenDay] = useState("");
   const ds = Array.from({ length: 7 }, (_, i) => {
@@ -1781,15 +1873,15 @@ function Week({ d, upd }: { d: Data; upd: (d: Data) => void }) {
                       {t.status === "completed" ? "✅" : "□"}{" "}
                       {subjectIcon(t.subject)} {t.subject}　{t.title}
                     </p>
-                    <div className="taskTools">
+                    {canManage && <div className="taskTools">
                       <EditTask task={t} d={d} upd={upd} />
                       <MoveTask task={t} d={d} upd={upd} />
                       <DeleteTask task={t} d={d} upd={upd} />
-                    </div>
+                    </div>}
                   </div>
                 ))}
                 {!ts.length && !es.length && <p className="muted">予定なし</p>}
-                <AddTask date={x} d={d} upd={upd} />
+                {canManage && <AddTask date={x} d={d} upd={upd} />}
               </div>
             )}
           </Card>
@@ -1896,7 +1988,15 @@ function Calendar({ d }: { d: Data }) {
     </>
   );
 }
-function Homework({ d, upd }: { d: Data; upd: (d: Data) => void }) {
+function Homework({
+  d,
+  upd,
+  canManage,
+}: {
+  d: Data;
+  upd: (d: Data) => void;
+  canManage: boolean;
+}) {
   const [query, setQuery] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("すべて");
   const [statusFilter, setStatusFilter] = useState("未完了");
@@ -2008,7 +2108,7 @@ function Homework({ d, upd }: { d: Data; upd: (d: Data) => void }) {
           </select>
         </div>
         <small>{foundTasks.length}件見つかりました</small>
-        {selected.length > 0 && (
+        {canManage && selected.length > 0 && (
           <div className="bulkActions">
             <b>{selected.length}件を選択中</b>
             <input
@@ -2033,8 +2133,11 @@ function Homework({ d, upd }: { d: Data; upd: (d: Data) => void }) {
         )}
         <div className="searchResults">
           {foundTasks.slice(0, 20).map((task) => (
-            <div className="searchResult" key={task.id}>
-              <label>
+            <div
+              className={`searchResult ${canManage ? "" : "readOnly"}`}
+              key={task.id}
+            >
+              {canManage && <label>
                 <input
                   type="checkbox"
                   aria-label={`${task.title}を選択`}
@@ -2047,7 +2150,7 @@ function Homework({ d, upd }: { d: Data; upd: (d: Data) => void }) {
                     )
                   }
                 />
-              </label>
+              </label>}
               <NavLink to={`/?date=${task.date}`}>
                 <span>{subjectIcon(task.subject)} {task.title}</span>
                 <small>{dateLabel(task.date)}・{task.estimatedMinutes}分</small>
@@ -2499,11 +2602,175 @@ function Settings({
     </>
   );
 }
+function ParentGate({
+  unlocked,
+  onUnlock,
+  children,
+}: {
+  unlocked: boolean;
+  onUnlock: () => void;
+  children: ReactNode;
+}) {
+  const [pin, setPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [error, setError] = useState("");
+  const storedHash = safeStorageGet("natsumanabi-parent-pin");
+  if (unlocked) return <>{children}</>;
+  const setup = !storedHash;
+  const submit = async () => {
+    if (!/^\d{4,6}$/.test(pin)) {
+      setError("PINは4〜6桁の数字にしてください。");
+      return;
+    }
+    if (setup) {
+      if (pin !== confirmPin) {
+        setError("確認用PINが一致しません。");
+        return;
+      }
+      safeStorageSet("natsumanabi-parent-pin", await hashPin(pin));
+      notify("保護者PINを設定しました ✓");
+      onUnlock();
+      return;
+    }
+    if ((await hashPin(pin)) !== storedHash) {
+      setError("PINが違います。");
+      setPin("");
+      return;
+    }
+    onUnlock();
+    notify("保護者モードを開始しました ✓");
+  };
+  return (
+    <>
+      <Title
+        t={setup ? "保護者PINを設定" : "保護者モード"}
+        sub="予定の変更や設定を保護します"
+      />
+      <Card className="parentGate">
+        <div className="parentLockIcon">🔐</div>
+        <h3>{setup ? "お母さま用のPINを決める" : "PINを入力してください"}</h3>
+        <p>
+          {setup
+            ? "本人が誤って予定や設定を変更しないための番号です。"
+            : "追加・編集・削除・リバランスは、解除後に使えます。"}
+        </p>
+        <Label t="4〜6桁のPIN">
+          <input
+            inputMode="numeric"
+            pattern="[0-9]*"
+            type="password"
+            maxLength={6}
+            value={pin}
+            onChange={(event) => {
+              setPin(event.target.value.replace(/\D/g, "").slice(0, 6));
+              setError("");
+            }}
+          />
+        </Label>
+        {setup && (
+          <Label t="確認のため、もう一度">
+            <input
+              inputMode="numeric"
+              pattern="[0-9]*"
+              type="password"
+              maxLength={6}
+              value={confirmPin}
+              onChange={(event) =>
+                setConfirmPin(event.target.value.replace(/\D/g, "").slice(0, 6))
+              }
+            />
+          </Label>
+        )}
+        {error && <p className="formError" role="alert">{error}</p>}
+        <button className="primary wide" type="button" onClick={submit}>
+          {setup ? "PINを設定してはじめる" : "保護者モードを開く"}
+        </button>
+      </Card>
+    </>
+  );
+}
+function ParentDashboard({ d, onLock }: { d: Data; onLock: () => void }) {
+  const now = today();
+  const weekEnd = addDays(now, 6);
+  const pending = d.tasks.filter(
+    (task) => !["completed", "skipped"].includes(task.status),
+  );
+  const overdue = pending.filter((task) => task.date < now);
+  const completedThisWeek = d.tasks.filter(
+    (task) =>
+      task.status === "completed" &&
+      task.completedAt &&
+      task.completedAt.slice(0, 10) >= addDays(now, -6),
+  );
+  const days = Array.from({ length: 7 }, (_, index) => addDays(now, index));
+  return (
+    <>
+      <Title t="保護者ダッシュボード" sub="学習状況と管理メニュー" />
+      <div className="parentStats">
+        <Card><b>{pending.length}</b><span>未完了</span></Card>
+        <Card><b>{overdue.length}</b><span>期限・予定日超過</span></Card>
+        <Card><b>{completedThisWeek.length}</b><span>7日間の完了</span></Card>
+      </div>
+      <Card>
+        <h3>📊 今週の予定量</h3>
+        <div className="parentWeekLoad">
+          {days.map((date) => {
+            const minutes = pending
+              .filter((task) => task.date === date)
+              .reduce((sum, task) => sum + task.estimatedMinutes, 0);
+            return (
+              <div className={minutes > d.settings.dailyLimitMinutes ? "over" : ""} key={date}>
+                <b>{dateLabel(date)}</b>
+                <span>{minutes}分</span>
+              </div>
+            );
+          })}
+        </div>
+        <small>{dateLabel(now)}〜{dateLabel(weekEnd)}</small>
+      </Card>
+      {overdue.length > 0 && (
+        <Card className="overdueCard">
+          <h3>⚠️ 確認が必要な未完了</h3>
+          {overdue.slice(0, 8).map((task) => (
+            <p key={task.id}>・{task.subject}　{task.title}（{dateLabel(task.date)}）</p>
+          ))}
+          <NavLink className="button primary" to="/homework">一覧で調整する</NavLink>
+        </Card>
+      )}
+      <div className="parentMenu">
+        <NavLink to="/"><b>📅 今日を管理</b><span>追加・編集・移動・リバランス</span></NavLink>
+        <NavLink to="/week"><b>▦ 週間予定</b><span>1週間を見ながら調整</span></NavLink>
+        <NavLink to="/homework"><b>📚 宿題一覧</b><span>検索・一括操作・進捗</span></NavLink>
+        <NavLink to="/settings"><b>⚙️ 設定と保存</b><span>バックアップ・復元・削除履歴</span></NavLink>
+      </div>
+      <div className="parentSessionActions">
+        <button type="button" onClick={onLock}>🔒 保護者モードを終了</button>
+        <button
+          className="dangerText"
+          type="button"
+          onClick={() => {
+            if (confirm("保護者PINを変更しますか？")) {
+              safeStorageRemove("natsumanabi-parent-pin");
+              onLock();
+              notify("新しいPINを設定してください");
+            }
+          }}
+        >
+          PINを変更
+        </button>
+      </div>
+    </>
+  );
+}
 function More() {
   return (
     <>
       <Title t="その他" sub="使いたいメニューを選んでね" />
       <div className="moreMenu">
+        <NavLink to="/parent">
+          <b>👩 保護者モード</b>
+          <span>学習状況の確認・予定の管理</span>
+        </NavLink>
         <NavLink to="/eiken">
           <b>🔤 英検4級</b>
           <span>英検の計画と進み具合</span>
