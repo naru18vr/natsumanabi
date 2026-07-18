@@ -52,6 +52,72 @@ export function suggestedMoves(tasks: Task[], date: string, limit: number) {
   return tasks.filter((task) => task.date === date && moved.has(task.id));
 }
 
+export function rebalanceHomeworkToDeadline(
+  tasks: Task[],
+  fromDate: string,
+  dueDate: string,
+  dailyLimit: number,
+) {
+  const days: string[] = [];
+  for (let date = fromDate; date <= dueDate; date = addDays(date, 1)) {
+    days.push(date);
+  }
+  if (!days.length) return { tasks, daily: [], overflowMinutes: 0 };
+
+  const candidates = tasks.filter(
+    (task) =>
+      task.category === "夏休み宿題" &&
+      task.status !== "completed" &&
+      task.status !== "skipped",
+  );
+  const candidateIds = new Set(candidates.map((task) => task.id));
+  const load = new Map(days.map((day) => [day, 0]));
+  tasks.forEach((task) => {
+    if (
+      days.includes(task.date) &&
+      !candidateIds.has(task.id) &&
+      task.status !== "completed" &&
+      task.status !== "skipped"
+    ) {
+      load.set(task.date, (load.get(task.date) || 0) + task.estimatedMinutes);
+    }
+  });
+
+  const destination = new Map<string, string>();
+  [...candidates]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .forEach((task) => {
+      const bestDay = [...days].sort((a, b) => {
+        const loadDiff = (load.get(a) || 0) - (load.get(b) || 0);
+        return loadDiff || a.localeCompare(b);
+      })[0];
+      destination.set(task.id, bestDay);
+      load.set(bestDay, (load.get(bestDay) || 0) + task.estimatedMinutes);
+    });
+
+  const overflowMinutes = days.reduce(
+    (sum, day) => sum + Math.max(0, (load.get(day) || 0) - dailyLimit),
+    0,
+  );
+  return {
+    tasks: tasks.map((task) => {
+      const nextDate = destination.get(task.id);
+      if (!nextDate || nextDate === task.date) return task;
+      return {
+        ...task,
+        date: nextDate,
+        status: "pending" as const,
+        rescheduleHistory: [
+          ...task.rescheduleHistory,
+          `${task.date}→${nextDate}（${dueDate}まで再配分）`,
+        ],
+      };
+    }),
+    daily: days.map((date) => ({ date, minutes: load.get(date) || 0 })),
+    overflowMinutes,
+  };
+}
+
 export function deadlineForecast(tasks: Task[], today: string) {
   const pending = tasks.filter(
     (task) =>
