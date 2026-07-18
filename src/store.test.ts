@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { initialData } from "./data";
-import { load, migrate, pct, phase, save } from "./store";
+import { isRestorableData, load, migrate, pct, phase, save } from "./store";
 
 describe("日程ルール", () => {
   it("期間を切り替える", () => {
@@ -14,6 +14,7 @@ describe("日程ルール", () => {
 
 describe("保存データ", () => {
   beforeEach(() => localStorage.clear());
+  afterEach(() => vi.restoreAllMocks());
 
   it("保存した予定を読み直せる", () => {
     const data = initialData();
@@ -42,5 +43,54 @@ describe("保存データ", () => {
         key.startsWith("natsumanabi-v1-broken-"),
       ),
     ).toBe(true);
+  });
+
+  it("不正なタスク項目を安全な値へ直す", () => {
+    const migrated = migrate({
+      settings: { ...initialData().settings, dailyLimitMinutes: -100 },
+      tasks: [
+        null,
+        {
+          id: "bad",
+          title: "",
+          date: "not-a-date",
+          estimatedMinutes: "NaN",
+          priority: "unknown",
+          status: "unknown",
+          requiredTools: null,
+        },
+      ],
+    } as never);
+    expect(migrated.settings.dailyLimitMinutes).toBe(15);
+    expect(migrated.tasks).toHaveLength(2);
+    expect(migrated.tasks[1].date).toBe("2026-07-21");
+    expect(migrated.tasks[1].estimatedMinutes).toBe(15);
+    expect(migrated.tasks[1].priority).toBe("normal");
+    expect(migrated.tasks[1].requiredTools).toEqual([]);
+  });
+
+  it("重複IDを分離し、進捗量を上限内へ直す", () => {
+    const migrated = migrate({
+      settings: initialData().settings,
+      tasks: [
+        { id: "same", title: "A", totalAmount: 5, completedAmount: 99 },
+        { id: "same", title: "B" },
+      ],
+    } as never);
+    expect(new Set(migrated.tasks.map((task) => task.id)).size).toBe(2);
+    expect(migrated.tasks[0].completedAmount).toBe(5);
+  });
+
+  it("保存領域が満杯でも例外停止しない", () => {
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("quota", "QuotaExceededError");
+    });
+    expect(save(initialData())).toBe(false);
+  });
+
+  it("復元ファイルの最低限の形式を確認する", () => {
+    expect(isRestorableData({ settings: {}, tasks: [] })).toBe(true);
+    expect(isRestorableData({ tasks: [] })).toBe(false);
+    expect(isRestorableData([])).toBe(false);
   });
 });
