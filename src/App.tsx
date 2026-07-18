@@ -14,6 +14,7 @@ import {
   deadlineForecast,
   overdueTasks,
   rebalanceDay,
+  rebalanceHomeworkToDeadline,
   reviewCopies,
   suggestedMoves,
 } from "./planner";
@@ -156,7 +157,7 @@ export default function App() {
           >
             文字{largeText ? "大" : "標準"}
           </button>
-          <span className="badge">v1.9</span>
+          <span className="badge">v1.10</span>
         </div>
       </header>
       <main>
@@ -1040,6 +1041,23 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
     date,
     d.settings.dailyLimitMinutes,
   );
+  const balanceStart =
+    date < d.settings.studyStartDate ? d.settings.studyStartDate : date;
+  const homeworkBalance =
+    date <= d.settings.homeworkGoalDate
+      ? rebalanceHomeworkToDeadline(
+          d.tasks,
+          balanceStart,
+          d.settings.homeworkGoalDate,
+          d.settings.dailyLimitMinutes,
+        )
+      : null;
+  const remainingHomework = d.tasks.filter(
+    (task) =>
+      task.category === "夏休み宿題" &&
+      task.status !== "completed" &&
+      task.status !== "skipped",
+  );
   const displayedRequired = focusMode
     ? requiredTasks.filter((task) => task.status !== "completed").slice(0, 1)
     : requiredTasks;
@@ -1283,7 +1301,45 @@ function Today({ d, upd }: { d: Data; upd: (d: Data) => void }) {
           </button>
         </Card>
       )}
-      {mins > d.settings.dailyLimitMinutes && (
+      {homeworkBalance && remainingHomework.length > 0 && (
+        <Card className="balanceCard">
+          <h3>📚 7月31日までにちょうどよく配分</h3>
+          <p>
+            残り{remainingHomework.length}件を、{dateLabel(balanceStart)}から締切までの
+            {homeworkBalance.daily.length}日間へ均等に組み直します。
+          </p>
+          <div className="balancePreview">
+            {homeworkBalance.daily.map((day) => (
+              <span
+                className={
+                  day.minutes > d.settings.dailyLimitMinutes ? "over" : ""
+                }
+                key={day.date}
+              >
+                <b>{Number(day.date.slice(-2))}日</b>
+                {day.minutes}分
+              </span>
+            ))}
+          </div>
+          {homeworkBalance.overflowMinutes > 0 && (
+            <p className="balanceWarning">
+              ⚠️ 全部終えるには、上限を超える日が合計
+              {homeworkBalance.overflowMinutes}分あります。
+            </p>
+          )}
+          <button
+            className="primary wide"
+            type="button"
+            onClick={() => {
+              upd({ ...d, tasks: homeworkBalance.tasks });
+              notify("7月31日までの宿題を組み直しました ✓");
+            }}
+          >
+            7月31日までに均等に組み直す
+          </button>
+        </Card>
+      )}
+      {mins > d.settings.dailyLimitMinutes && !homeworkBalance && (
         <Card className="adjustCard">
           <h3>🪄 今日は少し多め</h3>
           <p>
