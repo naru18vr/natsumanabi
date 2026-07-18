@@ -610,6 +610,34 @@ progress::-webkit-progress-value {
   background: #fff9e9;
   font-size: 12px;
 }
+.balanceCard {
+  border: 2px solid #168a70;
+  background: linear-gradient(135deg, #f5fff9, #edf8f3);
+}
+.balancePreview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(58px, 1fr));
+  gap: 5px;
+  margin: 12px 0;
+}
+.balancePreview span {
+  display: grid;
+  gap: 2px;
+  padding: 8px 3px;
+  text-align: center;
+  border-radius: 9px;
+  color: #126b5b;
+  background: #fff;
+  font-size: 10px;
+}
+.balancePreview span.over {
+  color: #9a421f;
+  background: #fff0e8;
+}
+.balanceWarning {
+  color: #9a421f !important;
+  font-weight: 700;
+}
 .taskSearch input {
   width: 100%;
   padding: 0 12px;
