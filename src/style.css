@@ -1502,6 +1502,50 @@ pre {
 .summerRoutine li b {
   font-size: 13px;
 }
+.calendarManageHint {
+  padding: 10px 12px;
+  border-radius: 12px;
+  color: #075a4d;
+  background: #dff4ec;
+  font-size: 13px;
+  font-weight: 800;
+}
+.day.selected {
+  outline: 3px solid #126b5b;
+  outline-offset: 1px;
+  background: #e6f5ef;
+}
+.calendarManager {
+  margin-top: 12px;
+  border: 2px solid #126b5b;
+  background: #f5fbf8;
+}
+.calendarManagerHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.calendarManagerHeading h3 {
+  margin: 3px 0 0;
+}
+.calendarManagerHeading button {
+  padding: 8px;
+  font-size: 11px;
+}
+.calendarTask {
+  padding: 10px 0;
+  border-bottom: 1px solid #dce4e0;
+}
+.calendarTask p,
+.calendarEvent {
+  margin: 5px 0;
+}
+.calendarTask .taskTools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
 @media (max-width: 430px) {
   .parentMenu {
     grid-template-columns: 1fr;
