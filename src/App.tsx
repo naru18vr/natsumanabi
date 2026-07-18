@@ -99,6 +99,21 @@ const safeStorageRemove = (key: string) => {
     // 保存領域へアクセスできなくても画面操作は続ける。
   }
 };
+const parentSessionActive = () => {
+  try {
+    return sessionStorage.getItem("natsumanabi-parent-session") === "active";
+  } catch {
+    return false;
+  }
+};
+const setParentSession = (active: boolean) => {
+  try {
+    if (active) sessionStorage.setItem("natsumanabi-parent-session", "active");
+    else sessionStorage.removeItem("natsumanabi-parent-session");
+  } catch {
+    // セッション保存が使えない端末では、開いている間だけ有効にする。
+  }
+};
 const makeId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
@@ -165,7 +180,7 @@ const summerRoutine = (hasClass: boolean) =>
       ];
 export default function App() {
   const [d, setD] = useState<Data>(load);
-  const [parentUnlocked, setParentUnlocked] = useState(false);
+  const [parentUnlocked, setParentUnlocked] = useState(parentSessionActive);
   const [simpleMode, setSimpleMode] = useState(
     () => safeStorageGet("natsumanabi-view") !== "detail",
   );
@@ -228,8 +243,13 @@ export default function App() {
   };
   const lockParent = () => {
     setParentUnlocked(false);
+    setParentSession(false);
     setUndoHistory([]);
     setUndoVisible(false);
+  };
+  const unlockParent = () => {
+    setParentUnlocked(true);
+    setParentSession(true);
   };
   return (
     <div
@@ -286,7 +306,7 @@ export default function App() {
               🔓 保護者
             </button>
           )}
-          <span className="badge">v1.13</span>
+          <span className="badge">v1.14</span>
         </div>
       </header>
       <main>
@@ -314,7 +334,7 @@ export default function App() {
             element={
               <ParentGate
                 unlocked={parentUnlocked}
-                onUnlock={() => setParentUnlocked(true)}
+                onUnlock={unlockParent}
               >
                 <Eiken d={d} upd={upd} />
               </ParentGate>
@@ -326,7 +346,7 @@ export default function App() {
             element={
               <ParentGate
                 unlocked={parentUnlocked}
-                onUnlock={() => setParentUnlocked(true)}
+                onUnlock={unlockParent}
               >
                 <Settings
                   d={d}
@@ -343,7 +363,7 @@ export default function App() {
             element={
               <ParentGate
                 unlocked={parentUnlocked}
-                onUnlock={() => setParentUnlocked(true)}
+                onUnlock={unlockParent}
               >
                 <ParentDashboard
                   d={d}
@@ -1912,7 +1932,13 @@ function Week({
                   {ts.reduce((a, t) => a + t.estimatedMinutes, 0)}分
                 </small>
               </span>
-                <b>{openDay === x ? "閉じる ▲" : "見る・追加 ▼"}</b>
+                <b>
+                  {openDay === x
+                    ? "閉じる ▲"
+                    : canManage
+                      ? "見る・追加 ▼"
+                      : "見る ▼"}
+                </b>
             </button>
             {openDay === x && (
               <div className="dayContents">
@@ -1936,6 +1962,11 @@ function Week({
                 ))}
                 {!ts.length && !es.length && <p className="muted">予定なし</p>}
                 {canManage && <AddTask date={x} d={d} upd={upd} />}
+                {!canManage && (
+                  <NavLink className="parentHint" to="/parent">
+                    🔒 予定を追加・編集するには保護者モードへ
+                  </NavLink>
+                )}
               </div>
             )}
           </Card>
