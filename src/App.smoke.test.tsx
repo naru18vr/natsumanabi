@@ -13,6 +13,7 @@ import { load, save } from "./store";
 describe("画面操作", () => {
   beforeEach(() => {
     localStorage.clear();
+    sessionStorage.clear();
     localStorage.setItem("natsumanabi-guide", "done");
     const data = initialData();
     data.settings.setupDone = true;
