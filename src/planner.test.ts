@@ -4,6 +4,7 @@ import {
   deadlineForecast,
   overdueTasks,
   rebalanceDay,
+  rebalanceHomeworkToDeadline,
   reviewCopies,
   suggestedMoves,
 } from "./planner";
@@ -70,6 +71,39 @@ describe("planner", () => {
       60,
     );
     expect(candidates.map((item) => item.title)).toEqual(["復習"]);
+  });
+  it("夏休み宿題を締切日まで均等に配る", () => {
+    const homework = Array.from({ length: 4 }, (_, index) => ({
+      ...task(`宿題${index}`, "2026-07-28", 30),
+      category: "夏休み宿題",
+    }));
+    const result = rebalanceHomeworkToDeadline(
+      homework,
+      "2026-07-28",
+      "2026-07-31",
+      60,
+    );
+    expect(result.tasks.map((item) => item.date)).toEqual([
+      "2026-07-28",
+      "2026-07-29",
+      "2026-07-30",
+      "2026-07-31",
+    ]);
+    expect(result.overflowMinutes).toBe(0);
+  });
+  it("完了済みの宿題は移動しない", () => {
+    const completed = {
+      ...task("完了", "2026-07-28"),
+      category: "夏休み宿題",
+      status: "completed" as const,
+    };
+    const result = rebalanceHomeworkToDeadline(
+      [completed],
+      "2026-07-28",
+      "2026-07-31",
+      60,
+    );
+    expect(result.tasks[0].date).toBe("2026-07-28");
   });
   it("締切までの1日量を計算する", () => {
     expect(
